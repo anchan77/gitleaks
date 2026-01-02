@@ -1,0 +1,14 @@
+[package]
+name = "gitleaks"
+version = "8.0.0"
+edition = "2021"
+authors = ["Gitleaks Contributors"]
+description = "Gitleaks scans code, past or present, for secrets"
+license = "MIT"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive", "env"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"], default-features = false }
+anyhow = "1.0"
+ctrlc = "3.4"
