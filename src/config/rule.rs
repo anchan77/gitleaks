@@ -89,7 +89,8 @@ impl Rule {
             return Err(ConfigError::NoRegexOrPath(self.rule_id.clone()));
         }
 
-        // Note: secretGroup validation will be done in Task 3 when we compile regexes
+        // Note: secretGroup validation is done during compilation in CompiledConfig::from_config()
+        // since it requires the regex to be compiled first
 
         self.validated = true;
         Ok(())
