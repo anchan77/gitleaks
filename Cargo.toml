@@ -8,6 +8,7 @@ serde = { version = "1.0.195", features = ["derive"] }
 toml = "0.8.0"
 thiserror = "1.0.56"
 regex = "1.10.2"
+aho-corasick = "1.1.2"
 # Pin indexmap to a version compatible with Rust 1.75
 indexmap = "=2.0.0"
 
