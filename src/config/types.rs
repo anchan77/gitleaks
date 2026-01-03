@@ -1,10 +1,18 @@
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
+use std::cell::Cell;
 
 use super::allowlist::{Allowlist, AllowlistMatchCondition, ViperAllowlist};
 use super::error::ConfigError;
 use super::extend::Extend;
 use super::rule::{Required, Rule};
+
+// Thread-local storage for extension depth tracking
+thread_local! {
+    static EXTEND_DEPTH: Cell<usize> = Cell::new(0);
+}
+
+const MAX_EXTEND_DEPTH: usize = 2;
 
 /// ViperGlobalAllowlist represents a global allowlist that can target specific rules
 #[derive(Debug, Deserialize, Clone)]
@@ -148,6 +156,11 @@ pub struct Config {
 impl ViperConfig {
     /// Translate converts a ViperConfig to a Config with validation
     pub fn translate(&self) -> Result<Config, ConfigError> {
+        self.translate_with_path("")
+    }
+
+    /// Translate with a specific config path (for extension loading)
+    pub fn translate_with_path(&self, config_path: &str) -> Result<Config, ConfigError> {
         let mut keywords = HashSet::new();
         let mut ordered_rules = Vec::new();
         let mut rules_map = HashMap::new();
@@ -282,21 +295,40 @@ impl ViperConfig {
             ordered_rules,
             allowlists: global_allowlists,
             min_version: self.min_version.clone(),
-            path: String::new(), // Will be set during loading in Task 6
+            path: config_path.to_string(),
         };
 
-        // Apply targeted allowlists to their target rules and validate target rule existence
-        for (rule_id, allowlists) in targeted_allowlists {
-            if let Some(rule) = config.rules.get_mut(&rule_id) {
-                rule.allowlists.extend(allowlists);
-            } else {
-                return Err(ConfigError::TargetRuleNotFound(rule_id));
+        // Handle extension logic
+        let current_extend_depth = EXTEND_DEPTH.with(|d| d.get());
+        if MAX_EXTEND_DEPTH != current_extend_depth {
+            // Validate that both path and use_default are not set
+            if !config.extend.path.is_empty() && config.extend.use_default {
+                return Err(ConfigError::ExtendConflict);
+            }
+
+            // Handle extension
+            if config.extend.use_default {
+                config.extend_default()?;
+            } else if !config.extend.path.is_empty() {
+                config.extend_path()?;
             }
         }
 
-        // Validate all rules
-        for rule in config.rules.values_mut() {
-            rule.validate()?;
+        // Apply targeted allowlists to their target rules and validate target rule existence
+        // This is done after extension and only at depth 0
+        if current_extend_depth == 0 {
+            for (rule_id, allowlists) in targeted_allowlists {
+                if let Some(rule) = config.rules.get_mut(&rule_id) {
+                    rule.allowlists.extend(allowlists);
+                } else {
+                    return Err(ConfigError::TargetRuleNotFound(rule_id));
+                }
+            }
+
+            // Validate all rules after everything has been assembled
+            for rule in config.rules.values_mut() {
+                rule.validate()?;
+            }
         }
 
         Ok(config)
@@ -309,4 +341,153 @@ impl Config {
         let viper_config: ViperConfig = toml::from_str(toml_str)?;
         viper_config.translate()
     }
+
+    /// Load a config from a file path
+    pub fn from_file(file_path: &str) -> Result<Self, ConfigError> {
+        let toml_str = std::fs::read_to_string(file_path)?;
+        let viper_config: ViperConfig = toml::from_str(&toml_str)?;
+        viper_config.translate_with_path(file_path)
+    }
+
+    /// Extend from the default embedded configuration
+    fn extend_default(&mut self) -> Result<(), ConfigError> {
+        // Increment extend depth
+        EXTEND_DEPTH.with(|d| d.set(d.get() + 1));
+
+        // Load and parse the default config
+        let default_config_str = get_default_config();
+        let default_viper: ViperConfig = toml::from_str(default_config_str)
+            .map_err(|e| ConfigError::TomlError(e))?;
+
+        let base_config = default_viper.translate_with_path("")
+            .map_err(|e| {
+                EXTEND_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+                e
+            })?;
+
+        // Merge the base config into this config
+        self.extend_from(base_config);
+
+        // Decrement extend depth
+        EXTEND_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+        Ok(())
+    }
+
+    /// Extend from a file path
+    fn extend_path(&mut self) -> Result<(), ConfigError> {
+        // Increment extend depth
+        EXTEND_DEPTH.with(|d| d.set(d.get() + 1));
+
+        // Use the extend path as-is (relative to working directory, not config file)
+        // This matches Go's behavior where viper.SetConfigFile uses the path as-is
+        let extend_path = &self.extend.path;
+
+        // Read the file
+        let config_content = std::fs::read_to_string(extend_path)
+            .map_err(|e| {
+                EXTEND_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+                ConfigError::IoError(e)
+            })?;
+
+        // Parse the config
+        let base_viper: ViperConfig = toml::from_str(&config_content)
+            .map_err(|e| {
+                EXTEND_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+                ConfigError::TomlError(e)
+            })?;
+
+        // Pass the extend path as the config path for recursive extension
+        let base_config = base_viper.translate_with_path(extend_path)
+            .map_err(|e| {
+                EXTEND_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+                e
+            })?;
+
+        // Merge the base config into this config
+        self.extend_from(base_config);
+
+        // Decrement extend depth
+        EXTEND_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+        Ok(())
+    }
+
+    /// Merge a base config into this config
+    fn extend_from(&mut self, base_config: Config) {
+        // Convert disabled rules into a set for efficient lookup
+        let disabled_rule_ids: HashSet<String> = self.extend.disabled_rules.iter().cloned().collect();
+
+        // Iterate through base config rules
+        for (rule_id, base_rule) in base_config.rules {
+            // Skip disabled rules
+            if disabled_rule_ids.contains(&rule_id) {
+                continue;
+            }
+
+            // Check if the rule exists in the current config
+            if let Some(current_rule) = self.rules.get(&rule_id) {
+                // Rule exists, merge the current rule into the base rule
+                let mut merged_rule = base_rule.clone();
+
+                // Override fields if they are set in the current rule
+                if !current_rule.description.is_empty() {
+                    merged_rule.description = current_rule.description.clone();
+                }
+                if current_rule.entropy != 0.0 {
+                    merged_rule.entropy = current_rule.entropy;
+                }
+                if current_rule.secret_group != 0 {
+                    merged_rule.secret_group = current_rule.secret_group;
+                }
+                if current_rule.regex.is_some() {
+                    merged_rule.regex = current_rule.regex.clone();
+                }
+                if current_rule.path.is_some() {
+                    merged_rule.path = current_rule.path.clone();
+                }
+
+                // Append tags and keywords (not replace)
+                merged_rule.tags.extend(current_rule.tags.clone());
+                merged_rule.keywords.extend(current_rule.keywords.clone());
+                merged_rule.allowlists.extend(current_rule.allowlists.clone());
+
+                // Add merged keywords to global keywords set
+                for keyword in &merged_rule.keywords {
+                    self.keywords.insert(keyword.clone());
+                }
+
+                // Update the rule in the map
+                self.rules.insert(rule_id, merged_rule);
+            } else {
+                // Rule doesn't exist in current config, add it
+                // Add the rule's keywords to the global keywords set
+                for keyword in &base_rule.keywords {
+                    self.keywords.insert(keyword.clone());
+                }
+                self.rules.insert(rule_id.clone(), base_rule);
+                self.ordered_rules.push(rule_id);
+            }
+        }
+
+        // Append global allowlists from the base config
+        self.allowlists.extend(base_config.allowlists);
+
+        // Sort ordered rules to keep them consistent
+        self.ordered_rules.sort();
+    }
+
+    /// Get rules in order
+    pub fn get_ordered_rules(&self) -> Vec<&Rule> {
+        self.ordered_rules
+            .iter()
+            .filter_map(|id| self.rules.get(id))
+            .collect()
+    }
+}
+
+/// Get the default embedded configuration
+/// This is a stub for now - will be implemented in Task 6
+fn get_default_config() -> &'static str {
+    // For now, return an empty config
+    // This will be replaced with the actual embedded gitleaks.toml in Task 6
+    ""
 }
