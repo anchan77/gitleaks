@@ -1,0 +1,19 @@
+[package]
+name = "gitleaks"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0.195", features = ["derive"] }
+toml = "0.8.0"
+thiserror = "1.0.56"
+regex = "1.10.2"
+aho-corasick = "1.1.2"
+# Pin indexmap to a version compatible with Rust 1.75
+indexmap = "=2.0.0"
+clap = { version = "4.4", features = ["derive", "cargo"] }
+env_logger = "0.10"
+log = "0.4"
+semver = "1.0"
+
+[dev-dependencies]
