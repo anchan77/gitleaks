@@ -38,6 +38,9 @@ pub enum ConfigError {
     #[error("unknown allowlist |regexTarget| '{0}' (expected 'match', 'line')")]
     UnknownRegexTarget(String),
 
+    #[error("must contain at least one check for: commits, paths, regexes, or stopwords")]
+    EmptyAllowlist,
+
     #[error("unable to load config due to extend.path and extend.useDefault being set")]
     ExtendConflict,
 

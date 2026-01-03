@@ -1,4 +1,4 @@
-use crate::config::{Config, ConfigError};
+use crate::config::{CompiledAllowlist, Config, ConfigError};
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -33,9 +33,7 @@ pub struct CompiledRule {
     pub keywords: Vec<String>,
 
     /// Allowlists allows a rule to be ignored for specific commits, paths, regexes, and/or stopwords
-    /// This will be implemented in Task 4
-    #[allow(dead_code)]
-    pub allowlists: Vec<()>, // Placeholder for now
+    pub allowlists: Vec<CompiledAllowlist>,
 
     /// If a rule has RequiredRules, it makes the rule dependent on the RequiredRules
     pub required_rules: Vec<crate::config::rule::Required>,
@@ -63,9 +61,8 @@ pub struct CompiledConfig {
     /// Keyword index for prefiltering
     pub keyword_index: Option<crate::config::keywords::KeywordIndex>,
 
-    /// Global allowlists (to be implemented in Task 4)
-    #[allow(dead_code)]
-    pub allowlists: Vec<()>, // Placeholder for now
+    /// Global allowlists
+    pub allowlists: Vec<CompiledAllowlist>,
 }
 
 impl CompiledConfig {
@@ -110,6 +107,13 @@ impl CompiledConfig {
                 all_keywords.push((keyword.to_lowercase(), rule_id.clone()));
             }
 
+            // Compile rule-specific allowlists
+            let mut compiled_allowlists = Vec::new();
+            for allowlist in &rule.allowlists {
+                let compiled = allowlist.compile()?;
+                compiled_allowlists.push(compiled);
+            }
+
             let compiled_rule = CompiledRule {
                 rule_id: rule.rule_id.clone(),
                 description: rule.description,
@@ -119,7 +123,7 @@ impl CompiledConfig {
                 path: compiled_path,
                 tags: rule.tags,
                 keywords: rule.keywords,
-                allowlists: rule.allowlists,
+                allowlists: compiled_allowlists,
                 required_rules: rule.required_rules,
                 skip_report: rule.skip_report,
             };
@@ -134,13 +138,20 @@ impl CompiledConfig {
             None
         };
 
+        // Compile global allowlists
+        let mut compiled_global_allowlists = Vec::new();
+        for allowlist in &config.allowlists {
+            let compiled = allowlist.compile()?;
+            compiled_global_allowlists.push(compiled);
+        }
+
         Ok(CompiledConfig {
             title: config.title,
             description: config.description,
             rules: compiled_rules,
             ordered_rules: config.ordered_rules,
             keyword_index,
-            allowlists: Vec::new(), // Placeholder for Task 4
+            allowlists: compiled_global_allowlists,
         })
     }
 

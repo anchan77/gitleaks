@@ -1,9 +1,62 @@
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 
+use super::allowlist::{Allowlist, AllowlistMatchCondition, ViperAllowlist};
 use super::error::ConfigError;
 use super::extend::Extend;
 use super::rule::{Required, Rule};
+
+/// ViperGlobalAllowlist represents a global allowlist that can target specific rules
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ViperGlobalAllowlist {
+    /// Short human readable description of the allowlist
+    #[serde(default)]
+    pub description: String,
+
+    /// MatchCondition determines whether all criteria must match. Defaults to "OR".
+    #[serde(default, rename = "condition")]
+    pub match_condition: AllowlistMatchCondition,
+
+    /// Commits is a slice of commit SHAs that are allowed to be ignored
+    #[serde(default)]
+    pub commits: Vec<String>,
+
+    /// Paths is a slice of path regular expressions that are allowed to be ignored
+    #[serde(default)]
+    pub paths: Vec<String>,
+
+    /// Can be `match`, `line`, or `secret` (default).
+    #[serde(default)]
+    pub regex_target: Option<String>,
+
+    /// Regexes is slice of content regular expressions that are allowed to be ignored
+    #[serde(default)]
+    pub regexes: Vec<String>,
+
+    /// StopWords is a slice of stop words that are allowed to be ignored.
+    #[serde(default)]
+    pub stopwords: Vec<String>,
+
+    /// Target rules for this allowlist
+    #[serde(default)]
+    pub target_rules: Vec<String>,
+}
+
+impl ViperGlobalAllowlist {
+    /// Convert to a ViperAllowlist for parsing
+    fn to_viper_allowlist(&self) -> ViperAllowlist {
+        ViperAllowlist {
+            description: self.description.clone(),
+            match_condition: self.match_condition,
+            commits: self.commits.clone(),
+            paths: self.paths.clone(),
+            regex_target: self.regex_target.clone(),
+            regexes: self.regexes.clone(),
+            stopwords: self.stopwords.clone(),
+        }
+    }
+}
 
 /// ViperRule is the raw rule structure as it appears in TOML
 #[derive(Debug, Deserialize)]
@@ -35,11 +88,11 @@ struct ViperRule {
 
     // Deprecated: this is a shim for backwards-compatibility
     // TODO: Remove this in 9.x
-    #[serde(default, rename = "allowList")]
-    allow_list: Option<()>, // Placeholder for Task 4
+    #[serde(default, rename = "allowlist")]
+    allow_list: Option<ViperAllowlist>,
 
     #[serde(default)]
-    allowlists: Vec<()>, // Placeholder for Task 4
+    allowlists: Vec<ViperAllowlist>,
 
     #[serde(default)]
     required: Vec<Required>,
@@ -67,11 +120,11 @@ pub struct ViperConfig {
 
     // Deprecated: this is a shim for backwards-compatibility
     // TODO: Remove this in 9.x
-    #[serde(default, rename = "allowList")]
-    pub allow_list: Option<()>, // Placeholder for Task 4
+    #[serde(default, rename = "allowlist")]
+    pub allow_list: Option<ViperGlobalAllowlist>,
 
     #[serde(default)]
-    pub allowlists: Vec<()>, // Placeholder for Task 4
+    pub allowlists: Vec<ViperGlobalAllowlist>,
 
     #[serde(default, rename = "minVersion")]
     pub min_version: String,
@@ -88,7 +141,7 @@ pub struct Config {
     pub keywords: HashSet<String>,
     /// Used to keep sarif results consistent
     pub ordered_rules: Vec<String>,
-    pub allowlists: Vec<()>, // Placeholder for Task 4
+    pub allowlists: Vec<Allowlist>,
     pub min_version: String,
 }
 
@@ -109,6 +162,26 @@ impl ViperConfig {
                 rule_keywords.push(keyword);
             }
 
+            // Parse rule-specific allowlists
+            let mut rule_allowlists = Vec::new();
+
+            // Check for deprecated allow_list field
+            if let Some(ref old_allowlist) = vr.allow_list {
+                if !vr.allowlists.is_empty() {
+                    return Err(ConfigError::DeprecatedRuleAllowlistConflict(vr.id.clone()));
+                }
+                let allowlist = old_allowlist.parse()
+                    .map_err(|e| ConfigError::RuleAllowlistError(vr.id.clone(), e.to_string()))?;
+                rule_allowlists.push(allowlist);
+            }
+
+            // Parse new format allowlists
+            for allowlist_viper in &vr.allowlists {
+                let allowlist = allowlist_viper.parse()
+                    .map_err(|e| ConfigError::RuleAllowlistError(vr.id.clone(), e.to_string()))?;
+                rule_allowlists.push(allowlist);
+            }
+
             // Create the rule
             let mut rule = Rule {
                 rule_id: vr.id.clone(),
@@ -127,7 +200,7 @@ impl ViperConfig {
                 entropy: vr.entropy,
                 keywords: rule_keywords,
                 tags: vr.tags.clone(),
-                allowlists: Vec::new(), // Will be populated in Task 4
+                allowlists: rule_allowlists,
                 required_rules: Vec::new(),
                 skip_report: vr.skip_report,
                 validated: false,
@@ -157,6 +230,48 @@ impl ViperConfig {
             }
         }
 
+        // Parse global allowlists
+        let mut global_allowlists = Vec::new();
+        let mut targeted_allowlists: HashMap<String, Vec<Allowlist>> = HashMap::new();
+
+        // Check for deprecated allow_list field
+        if let Some(ref old_allowlist) = self.allow_list {
+            if !self.allowlists.is_empty() {
+                return Err(ConfigError::DeprecatedAllowlistConflict);
+            }
+            // Process the old format global allowlist
+            let viper_allowlist = old_allowlist.to_viper_allowlist();
+            let allowlist = viper_allowlist.parse()
+                .map_err(|e| ConfigError::GlobalAllowlistError(e.to_string()))?;
+
+            if !old_allowlist.target_rules.is_empty() {
+                for rule_id in &old_allowlist.target_rules {
+                    targeted_allowlists.entry(rule_id.clone())
+                        .or_insert_with(Vec::new)
+                        .push(allowlist.clone());
+                }
+            } else {
+                global_allowlists.push(allowlist);
+            }
+        }
+
+        // Parse new format global allowlists
+        for global_viper in &self.allowlists {
+            let viper_allowlist = global_viper.to_viper_allowlist();
+            let allowlist = viper_allowlist.parse()
+                .map_err(|e| ConfigError::GlobalAllowlistError(e.to_string()))?;
+
+            if !global_viper.target_rules.is_empty() {
+                for rule_id in &global_viper.target_rules {
+                    targeted_allowlists.entry(rule_id.clone())
+                        .or_insert_with(Vec::new)
+                        .push(allowlist.clone());
+                }
+            } else {
+                global_allowlists.push(allowlist);
+            }
+        }
+
         // Assemble the config
         let mut config = Config {
             title: self.title.clone(),
@@ -165,10 +280,19 @@ impl ViperConfig {
             rules: rules_map,
             keywords,
             ordered_rules,
-            allowlists: Vec::new(), // Will be populated in Task 4
+            allowlists: global_allowlists,
             min_version: self.min_version.clone(),
             path: String::new(), // Will be set during loading in Task 6
         };
+
+        // Apply targeted allowlists to their target rules and validate target rule existence
+        for (rule_id, allowlists) in targeted_allowlists {
+            if let Some(rule) = config.rules.get_mut(&rule_id) {
+                rule.allowlists.extend(allowlists);
+            } else {
+                return Err(ConfigError::TargetRuleNotFound(rule_id));
+            }
+        }
 
         // Validate all rules
         for rule in config.rules.values_mut() {
