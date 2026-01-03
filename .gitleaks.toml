@@ -1,0 +1,10 @@
+# Gitleaks configuration for this project
+title = "gitleaks config"
+
+# Global allowlist to exclude test files
+[[allowlists]]
+description = "Ignore test data files"
+paths = [
+  '''testdata/.*''',
+  '''tests/.*'''
+]

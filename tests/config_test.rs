@@ -299,3 +299,315 @@ fn test_compile_ordered_rules() {
     assert!(compiled.rules.contains_key("rule-two"));
     assert!(compiled.rules.contains_key("rule-three"));
 }
+
+// Task 4: Allowlist tests
+
+#[test]
+fn test_allowlist_global_old_compat() {
+    let toml_str =
+        fs::read_to_string(format!("{}valid/allowlist_global_old_compat.toml", CONFIG_PATH))
+            .expect("Failed to read allowlist_global_old_compat.toml");
+
+    let config = Config::from_toml(&toml_str).expect("Failed to parse config");
+
+    assert_eq!(config.allowlists.len(), 1);
+    assert_eq!(config.allowlists[0].stopwords.len(), 1);
+    assert!(config
+        .allowlists[0]
+        .stopwords
+        .contains(&"0989c462-69c9-49fa-b7d2-30dc5c576a97".to_string()));
+}
+
+#[test]
+fn test_allowlist_global_regex() {
+    let toml_str =
+        fs::read_to_string(format!("{}valid/allowlist_global_regex.toml", CONFIG_PATH))
+            .expect("Failed to read allowlist_global_regex.toml");
+
+    let config = Config::from_toml(&toml_str).expect("Failed to parse config");
+
+    assert_eq!(config.allowlists.len(), 1);
+    assert_eq!(config.allowlists[0].regexes.len(), 1);
+    assert_eq!(config.allowlists[0].regexes[0], "AKIALALEM.L33243OLIA");
+}
+
+#[test]
+fn test_allowlist_rule_regex() {
+    let toml_str =
+        fs::read_to_string(format!("{}valid/allowlist_rule_regex.toml", CONFIG_PATH))
+            .expect("Failed to read allowlist_rule_regex.toml");
+
+    let config = Config::from_toml(&toml_str).expect("Failed to parse config");
+
+    assert_eq!(config.title, "simple config with allowlist for aws");
+    assert!(config.rules.contains_key("aws-access-key"));
+
+    let rule = &config.rules["aws-access-key"];
+    assert_eq!(rule.allowlists.len(), 1);
+    assert_eq!(rule.allowlists[0].regexes.len(), 1);
+    assert_eq!(rule.allowlists[0].regexes[0], "AKIALALEMEL33243OLIA");
+}
+
+#[test]
+fn test_allowlist_rule_commit() {
+    let toml_str =
+        fs::read_to_string(format!("{}valid/allowlist_rule_commit.toml", CONFIG_PATH))
+            .expect("Failed to read allowlist_rule_commit.toml");
+
+    let config = Config::from_toml(&toml_str).expect("Failed to parse config");
+
+    assert!(config.rules.contains_key("aws-access-key"));
+
+    let rule = &config.rules["aws-access-key"];
+    assert_eq!(rule.allowlists.len(), 1);
+    assert_eq!(rule.allowlists[0].commits.len(), 1);
+    assert_eq!(rule.allowlists[0].commits[0], "allowthiscommit");
+}
+
+#[test]
+fn test_allowlist_rule_path() {
+    let toml_str =
+        fs::read_to_string(format!("{}valid/allowlist_rule_path.toml", CONFIG_PATH))
+            .expect("Failed to read allowlist_rule_path.toml");
+
+    let config = Config::from_toml(&toml_str).expect("Failed to parse config");
+
+    assert!(config.rules.contains_key("aws-access-key"));
+
+    let rule = &config.rules["aws-access-key"];
+    assert_eq!(rule.allowlists.len(), 1);
+    assert_eq!(rule.allowlists[0].paths.len(), 1);
+    assert_eq!(rule.allowlists[0].paths[0], ".go");
+}
+
+#[test]
+fn test_allowlist_global_empty() {
+    let toml_str =
+        fs::read_to_string(format!("{}invalid/allowlist_global_empty.toml", CONFIG_PATH))
+            .expect("Failed to read allowlist_global_empty.toml");
+
+    let result = Config::from_toml(&toml_str);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    let err_msg = err.to_string();
+    assert!(
+        err_msg.contains("must contain at least one check"),
+        "Expected empty allowlist error, got: {}",
+        err_msg
+    );
+}
+
+#[test]
+fn test_allowlist_rule_empty() {
+    let toml_str =
+        fs::read_to_string(format!("{}invalid/allowlist_rule_empty.toml", CONFIG_PATH))
+            .expect("Failed to read allowlist_rule_empty.toml");
+
+    let result = Config::from_toml(&toml_str);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    let err_msg = err.to_string();
+    assert!(
+        err_msg.contains("must contain at least one check"),
+        "Expected empty allowlist error, got: {}",
+        err_msg
+    );
+}
+
+#[test]
+fn test_allowlist_global_regextarget() {
+    let toml_str = fs::read_to_string(format!(
+        "{}invalid/allowlist_global_regextarget.toml",
+        CONFIG_PATH
+    ))
+    .expect("Failed to read allowlist_global_regextarget.toml");
+
+    let result = Config::from_toml(&toml_str);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    let err_msg = err.to_string();
+    assert!(
+        err_msg.contains("unknown allowlist |regexTarget|"),
+        "Expected unknown regexTarget error, got: {}",
+        err_msg
+    );
+}
+
+#[test]
+fn test_allowlist_rule_regextarget() {
+    let toml_str = fs::read_to_string(format!(
+        "{}invalid/allowlist_rule_regextarget.toml",
+        CONFIG_PATH
+    ))
+    .expect("Failed to read allowlist_rule_regextarget.toml");
+
+    let result = Config::from_toml(&toml_str);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    let err_msg = err.to_string();
+    assert!(
+        err_msg.contains("unknown allowlist |regexTarget|"),
+        "Expected unknown regexTarget error, got: {}",
+        err_msg
+    );
+}
+
+#[test]
+fn test_allowlist_global_old_and_new() {
+    let toml_str = fs::read_to_string(format!(
+        "{}invalid/allowlist_global_old_and_new.toml",
+        CONFIG_PATH
+    ))
+    .expect("Failed to read allowlist_global_old_and_new.toml");
+
+    let result = Config::from_toml(&toml_str);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    let err_msg = err.to_string();
+    assert!(
+        err_msg.contains("[allowlist] is deprecated"),
+        "Expected deprecated allowlist conflict error, got: {}",
+        err_msg
+    );
+}
+
+#[test]
+fn test_allowlist_rule_old_and_new() {
+    let toml_str = fs::read_to_string(format!(
+        "{}invalid/allowlist_rule_old_and_new.toml",
+        CONFIG_PATH
+    ))
+    .expect("Failed to read allowlist_rule_old_and_new.toml");
+
+    let result = Config::from_toml(&toml_str);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    let err_msg = err.to_string();
+    assert!(
+        err_msg.contains("[rules.allowlist] is deprecated"),
+        "Expected deprecated rule allowlist conflict error, got: {}",
+        err_msg
+    );
+}
+
+#[test]
+fn test_allowlist_global_target_rule_id() {
+    let toml_str = fs::read_to_string(format!(
+        "{}invalid/allowlist_global_target_rule_id.toml",
+        CONFIG_PATH
+    ))
+    .expect("Failed to read allowlist_global_target_rule_id.toml");
+
+    let result = Config::from_toml(&toml_str);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    let err_msg = err.to_string();
+    assert!(
+        err_msg.contains("target rule ID") && err_msg.contains("does not exist"),
+        "Expected target rule not found error, got: {}",
+        err_msg
+    );
+}
+
+// Test allowlist compilation
+#[test]
+fn test_compile_allowlist_rule() {
+    let toml_str =
+        fs::read_to_string(format!("{}valid/allowlist_rule_regex.toml", CONFIG_PATH))
+            .expect("Failed to read allowlist_rule_regex.toml");
+
+    let config = Config::from_toml(&toml_str).expect("Failed to parse config");
+    let compiled = CompiledConfig::from_config(config).expect("Failed to compile config");
+
+    assert!(compiled.rules.contains_key("aws-access-key"));
+
+    let rule = &compiled.rules["aws-access-key"];
+    assert_eq!(rule.allowlists.len(), 1);
+
+    let allowlist = &rule.allowlists[0];
+    assert!(allowlist.regex_pattern.is_some());
+
+    // Test that the compiled regex works
+    assert!(allowlist.regex_allowed("AKIALALEMEL33243OLIA"));
+    assert!(!allowlist.regex_allowed("AKIALALEMEL33243OLIB"));
+}
+
+#[test]
+fn test_compile_allowlist_global() {
+    let toml_str =
+        fs::read_to_string(format!("{}valid/allowlist_global_regex.toml", CONFIG_PATH))
+            .expect("Failed to read allowlist_global_regex.toml");
+
+    let config = Config::from_toml(&toml_str).expect("Failed to parse config");
+    let compiled = CompiledConfig::from_config(config).expect("Failed to compile config");
+
+    assert_eq!(compiled.allowlists.len(), 1);
+
+    let allowlist = &compiled.allowlists[0];
+    assert!(allowlist.regex_pattern.is_some());
+
+    // Test that the compiled regex works
+    assert!(allowlist.regex_allowed("AKIALALEM.L33243OLIA"));
+    assert!(!allowlist.regex_allowed("AKIALALEM.L33243OLIB"));
+}
+
+#[test]
+fn test_compile_allowlist_stopwords() {
+    let toml_str =
+        fs::read_to_string(format!("{}valid/allowlist_global_old_compat.toml", CONFIG_PATH))
+            .expect("Failed to read allowlist_global_old_compat.toml");
+
+    let config = Config::from_toml(&toml_str).expect("Failed to parse config");
+    let compiled = CompiledConfig::from_config(config).expect("Failed to compile config");
+
+    assert_eq!(compiled.allowlists.len(), 1);
+
+    let allowlist = &compiled.allowlists[0];
+    assert!(allowlist.stopword_trie.is_some());
+
+    // Test that the stopword matching works (case-insensitive)
+    assert!(allowlist.contains_stopword("0989c462-69c9-49fa-b7d2-30dc5c576a97"));
+    assert!(allowlist.contains_stopword("0989C462-69C9-49FA-B7D2-30DC5C576A97"));
+    assert!(allowlist.contains_stopword("prefix_0989c462-69c9-49fa-b7d2-30dc5c576a97_suffix"));
+    assert!(!allowlist.contains_stopword("different-uuid"));
+}
+
+
+#[test]
+fn test_allowlist_global_target_rules() {
+    let toml_str = fs::read_to_string(format!("{}valid/allowlist_global_target_rules.toml", CONFIG_PATH))
+        .expect("Failed to read allowlist_global_target_rules.toml");
+
+    let config = Config::from_toml(&toml_str).expect("Failed to parse config");
+
+    // Should have 3 rules
+    assert_eq!(config.rules.len(), 3);
+    
+    // Should have 1 global allowlist (the one without targetRules)
+    assert_eq!(config.allowlists.len(), 1);
+    assert_eq!(config.allowlists[0].regexes.len(), 1);
+    assert_eq!(config.allowlists[0].regexes[0], ".*fake.*");
+    
+    // github-app-token should have 1 allowlist (from targetRules)
+    let github_app_token = &config.rules["github-app-token"];
+    assert_eq!(github_app_token.allowlists.len(), 1);
+    assert_eq!(github_app_token.allowlists[0].paths.len(), 1);
+    assert_eq!(github_app_token.allowlists[0].paths[0], r"(?:^|/)@octokit/auth-token/README\.md$");
+    
+    // github-oauth should have 0 allowlists
+    let github_oauth = &config.rules["github-oauth"];
+    assert_eq!(github_oauth.allowlists.len(), 0);
+    
+    // github-pat should have 1 allowlist (from targetRules)
+    let github_pat = &config.rules["github-pat"];
+    assert_eq!(github_pat.allowlists.len(), 1);
+    assert_eq!(github_pat.allowlists[0].paths.len(), 1);
+    assert_eq!(github_pat.allowlists[0].paths[0], r"(?:^|/)@octokit/auth-token/README\.md$");
+}

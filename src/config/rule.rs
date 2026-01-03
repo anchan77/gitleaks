@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use super::allowlist::Allowlist;
+
 /// Rule contains information that define details on how to detect secrets
 #[derive(Debug, Clone)]
 pub struct Rule {
@@ -31,9 +33,7 @@ pub struct Rule {
     pub keywords: Vec<String>,
 
     /// Allowlists allows a rule to be ignored for specific commits, paths, regexes, and/or stopwords
-    /// This will be implemented in Task 4
-    #[allow(dead_code)]
-    pub allowlists: Vec<()>, // Placeholder for now
+    pub allowlists: Vec<Allowlist>,
 
     /// If a rule has RequiredRules, it makes the rule dependent on the RequiredRules
     pub required_rules: Vec<Required>,
