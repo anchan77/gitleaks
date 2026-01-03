@@ -18,12 +18,14 @@
 //! The `Source` trait uses an iterator-based API for better Rust ergonomics and composability.
 //! This allows natural integration with Rust's iterator adapters and parallel processing libraries.
 
+mod file;
 mod fragment;
 mod git_info;
 mod platform;
 mod source;
 
 // Re-export public types
+pub use file::File;
 pub use fragment::Fragment;
 pub use git_info::{CommitInfo, RemoteInfo};
 pub use platform::Platform;
