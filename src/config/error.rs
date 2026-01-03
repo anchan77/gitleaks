@@ -52,6 +52,15 @@ pub enum ConfigError {
 
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[error("Failed to load configuration: {0}")]
+    LoadError(String),
+
+    #[error("Failed to parse configuration: {0}")]
+    ParseError(String),
+
+    #[error("Configuration validation error: {0}")]
+    ValidationError(String),
 }
 
 fn format_context(
