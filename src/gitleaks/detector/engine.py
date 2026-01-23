@@ -11,7 +11,8 @@ This module implements the Detector class which orchestrates secret scanning:
 
 import asyncio
 from collections.abc import Callable
-from typing import List, Optional, Set
+from pathlib import Path
+from typing import List, Optional, Set, Dict
 import regex
 import ahocorasick
 
@@ -20,6 +21,7 @@ from gitleaks.sources.fragment import Fragment
 from gitleaks.reporting.finding import Finding
 from gitleaks.detector.location import location, find_newline_indices, extract_line
 from gitleaks.detector.utils import shannon_entropy, filter_findings, create_scm_link, print_finding
+from gitleaks.detector.baseline import load_baseline, is_new_finding
 from gitleaks.logging import get_logger
 
 logger = get_logger(__name__)
@@ -69,6 +71,11 @@ class Detector:
 
         # Statistics
         self._total_bytes = 0
+
+        # Baseline and gitleaksignore support
+        self.baseline: List[Finding] = []
+        self.baseline_path: str = ""
+        self.gitleaks_ignore: Dict[str, bool] = {}
 
     def _build_prefilter(self) -> None:
         """Build Aho-Corasick trie from all keywords in rules."""
@@ -274,7 +281,7 @@ class Detector:
         if rule._path_compiled and not rule._regex_compiled:
             if rule._path_compiled.search(fragment.file_path):
                 finding = self._create_path_finding(fragment, rule)
-                if not self._is_finding_allowed(finding, rule):
+                if not self._should_suppress_finding(finding, rule):
                     findings.append(finding)
             return findings
 
@@ -351,9 +358,11 @@ class Detector:
             # Generate fingerprint
             finding.fingerprint = self._generate_fingerprint(finding)
 
-            # Check allowlists
-            if not self._is_finding_allowed(finding, rule):
-                findings.append(finding)
+            # Check if finding should be suppressed
+            if self._should_suppress_finding(finding, rule):
+                continue
+
+            findings.append(finding)
 
         return findings
 
@@ -550,6 +559,41 @@ class Detector:
 
         return False
 
+    def _should_suppress_finding(self, finding: Finding, rule: Rule) -> bool:
+        """
+        Check if finding should be suppressed (allowlist, gitleaksignore, or baseline).
+
+        Args:
+            finding: Finding to check
+            rule: Rule that generated the finding
+
+        Returns:
+            True if finding should be suppressed
+        """
+        # Check allowlists first
+        if self._is_finding_allowed(finding, rule):
+            logger.debug(f"skipping finding: allowlist matches")
+            return True
+
+        # Check gitleaksignore
+        # Generate both global and commit fingerprints for checking
+        global_fingerprint = f"{finding.file}:{finding.rule_id}:{finding.start_line}"
+
+        if global_fingerprint in self.gitleaks_ignore:
+            logger.debug(f"skipping finding: global fingerprint in gitleaksignore: {global_fingerprint}")
+            return True
+
+        if finding.commit and finding.fingerprint in self.gitleaks_ignore:
+            logger.debug(f"skipping finding: commit fingerprint in gitleaksignore: {finding.fingerprint}")
+            return True
+
+        # Check baseline
+        if self.baseline and not is_new_finding(finding, self.redact, self.baseline):
+            logger.debug(f"skipping finding: present in baseline: {finding.fingerprint}")
+            return True
+
+        return False
+
     def _allowlist_matches_finding(self, allowlist: Allowlist, finding: Finding) -> bool:
         """
         Check if allowlist matches a finding.
@@ -654,3 +698,93 @@ class Detector:
             List of findings
         """
         return list(self._findings)
+
+    def add_baseline(self, baseline_path: str, source: str) -> None:
+        """
+        Load and configure baseline for suppressing known findings.
+
+        Args:
+            baseline_path: Path to baseline JSON file
+            source: Source path being scanned (used to compute relative baseline path)
+
+        Raises:
+            FileNotFoundError: If baseline file doesn't exist
+            ValueError: If baseline format is invalid
+        """
+        if not baseline_path:
+            return
+
+        # Convert paths to absolute
+        absolute_source = Path(source).resolve()
+        absolute_baseline = Path(baseline_path).resolve()
+
+        # Compute relative path from source to baseline
+        try:
+            if absolute_source.is_file():
+                # If source is a file, use its parent directory
+                relative_baseline = absolute_baseline.relative_to(absolute_source.parent)
+            else:
+                relative_baseline = absolute_baseline.relative_to(absolute_source)
+            baseline_path_str = str(relative_baseline)
+        except ValueError:
+            # If relative path can't be computed, use absolute path
+            baseline_path_str = str(absolute_baseline)
+
+        # Load baseline findings
+        self.baseline = load_baseline(str(absolute_baseline))
+        self.baseline_path = baseline_path_str
+
+        logger.info(f"loaded baseline from {baseline_path_str} with {len(self.baseline)} findings")
+
+    def add_gitleaks_ignore(self, gitleaks_ignore_path: str) -> None:
+        """
+        Load fingerprints from a .gitleaksignore file.
+
+        The .gitleaksignore file format supports:
+        - Global fingerprints: file:rule-id:start-line
+        - Commit fingerprints: commit:file:rule-id:start-line
+        - Comments starting with #
+        - Empty lines (ignored)
+
+        Args:
+            gitleaks_ignore_path: Path to .gitleaksignore file
+
+        Raises:
+            FileNotFoundError: If file doesn't exist
+            IOError: If file can't be read
+        """
+        path = Path(gitleaks_ignore_path)
+
+        if not path.exists():
+            raise FileNotFoundError(f"gitleaksignore file not found: {gitleaks_ignore_path}")
+
+        logger.debug(f"found .gitleaksignore file at {gitleaks_ignore_path}")
+
+        with open(path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+
+                # Skip empty lines and comments
+                if not line or line.startswith('#'):
+                    continue
+
+                # Normalize path separators (Windows compatibility)
+                # Split fingerprint into parts
+                parts = line.split(':')
+
+                if len(parts) == 3:
+                    # Global fingerprint: file:rule-id:start-line
+                    parts[0] = parts[0].replace('\\', '/')
+                    fingerprint = ':'.join(parts)
+                elif len(parts) == 4:
+                    # Commit fingerprint: commit:file:rule-id:start-line
+                    parts[1] = parts[1].replace('\\', '/')
+                    fingerprint = ':'.join(parts)
+                else:
+                    logger.warn(f"invalid .gitleaksignore entry: {line}")
+                    continue
+
+                # Store fingerprint in ignore set
+                self.gitleaks_ignore[fingerprint] = True
+
+        logger.info(f"loaded {len(self.gitleaks_ignore)} fingerprints from {gitleaks_ignore_path}")

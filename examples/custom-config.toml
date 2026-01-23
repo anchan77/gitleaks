@@ -1,0 +1,67 @@
+# Example custom Gitleaks configuration
+# This demonstrates how to create custom rules and allowlists
+
+title = "Example Custom Configuration"
+
+# Extend the default configuration
+[extend]
+useDefault = true
+# Disable specific rules you don't want
+disabledRules = []
+
+# Define a custom rule
+[[rules]]
+id = "custom-api-key"
+description = "Custom API Key Pattern"
+# This regex looks for a common API key pattern
+regex = '''(?i)api[_-]?key[_-]?[:=]\s*['"]?([a-zA-Z0-9_-]{32,})['"]?'''
+# Keywords help pre-filter content before regex matching
+keywords = ["api", "key"]
+# Tags help categorize findings
+tags = ["api", "custom"]
+# The capture group containing the secret (0 = entire match)
+secretGroup = 1
+# Minimum Shannon entropy for the secret (helps reduce false positives)
+entropy = 3.0
+
+[[rules]]
+id = "custom-password"
+description = "Password in configuration"
+regex = '''(?i)password\s*[:=]\s*['"]([^'"]{8,})['"]'''
+keywords = ["password"]
+tags = ["password", "config"]
+secretGroup = 1
+
+# Global allowlist - applies to all rules
+[[allowlists]]
+description = "Ignore test and example files"
+paths = [
+  '''test/.*''',
+  '''.*_test\.(py|js|go)$''',
+  '''examples/.*''',
+  '''.*/testdata/.*'''
+]
+
+[[allowlists]]
+description = "Ignore common placeholder values"
+stopwords = [
+  "example",
+  "placeholder",
+  "dummy",
+  "test",
+  "sample"
+]
+
+# Rule-specific allowlist
+[[rules.allowlists]]
+description = "Ignore documentation examples"
+condition = "OR"
+paths = [
+  '''README\.md$''',
+  '''docs/.*'''
+]
+regexTarget = "line"
+regexes = [
+  '''# Example:''',
+  '''<!-- Example -->'''
+]

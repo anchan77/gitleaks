@@ -22,6 +22,7 @@ from gitleaks.cli.common import (
     get_reporter,
     init_config,
     pass_context,
+    setup_detector,
     write_report,
 )
 from gitleaks.detector.engine import Detector
@@ -74,6 +75,9 @@ async def dir_scan_async(
     detector.no_color = ctx.no_color
     detector.ignore_gitleaks_allow = ctx.ignore_gitleaks_allow
     detector.max_archive_depth = ctx.max_archive_depth
+
+    # Set up baseline and gitleaksignore
+    setup_detector(ctx, detector, source)
 
     # Set concurrency semaphore (use default of 40 for now)
     # This controls how many fragments are processed concurrently
