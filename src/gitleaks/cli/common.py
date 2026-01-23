@@ -140,7 +140,7 @@ def format_duration(duration: float) -> str:
 
 
 @click.group(invoke_without_command=False)
-@click.version_option(version=__version__, prog_name="gitleaks")
+@click.version_option(version=__version__, message="gitleaks version %(version)s")
 @click.option(
     "--config",
     "-c",
