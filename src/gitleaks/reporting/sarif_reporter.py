@@ -1,11 +1,16 @@
-"""SARIF 2.1.0 reporter for gitleaks findings."""
+"""
+SARIF reporter for gitleaks findings.
+
+Implements SARIF 2.1.0 schema for static analysis results.
+https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
+"""
 
 import json
-from dataclasses import asdict, dataclass, field
-from typing import IO, Any, Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import IO, List, Optional, Dict, Any
 
-from gitleaks.reporting import Finding
-from gitleaks.reporting.constants import DRIVER, VERSION
+from gitleaks.reporting.finding import Finding
+from gitleaks.reporting.constants import VERSION, DRIVER
 
 
 @dataclass
@@ -14,46 +19,46 @@ class ShortDescription:
 
     text: str
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {"text": self.text}
+
 
 @dataclass
 class Rule:
     """SARIF rule definition."""
 
     id: str
-    short_description: ShortDescription = field(metadata={"json": "shortDescription"})
+    short_description: ShortDescription
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dict with proper JSON field names."""
-        return {"id": self.id, "shortDescription": {"text": self.short_description.text}}
+        return {"id": self.id, "shortDescription": self.short_description.to_dict()}
 
 
 @dataclass
 class Driver:
-    """SARIF driver (tool) definition."""
+    """SARIF tool driver information."""
 
     name: str
-    semantic_version: str = field(metadata={"json": "semanticVersion"})
-    information_uri: str = field(metadata={"json": "informationUri"})
-    rules: List[Rule] = field(default_factory=list)
+    semantic_version: str
+    information_uri: str
+    rules: List[Rule]
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dict with proper JSON field names."""
         return {
             "name": self.name,
             "semanticVersion": self.semantic_version,
             "informationUri": self.information_uri,
-            "rules": [r.to_dict() for r in self.rules],
+            "rules": [rule.to_dict() for rule in self.rules],
         }
 
 
 @dataclass
 class Tool:
-    """SARIF tool definition."""
+    """SARIF tool information."""
 
     driver: Driver
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dict."""
         return {"driver": self.driver.to_dict()}
 
 
@@ -63,12 +68,18 @@ class Message:
 
     text: str
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {"text": self.text}
+
 
 @dataclass
 class ArtifactLocation:
-    """SARIF artifact location."""
+    """SARIF artifact location (file path)."""
 
     uri: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"uri": self.uri}
 
 
 @dataclass
@@ -77,25 +88,27 @@ class Snippet:
 
     text: str
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {"text": self.text}
+
 
 @dataclass
 class Region:
-    """SARIF region (location within file)."""
+    """SARIF region (location within a file)."""
 
-    start_line: int = field(metadata={"json": "startLine"})
-    end_line: int = field(metadata={"json": "endLine"})
-    start_column: int = field(metadata={"json": "startColumn"})
-    end_column: int = field(metadata={"json": "endColumn"})
-    snippet: Snippet = field(default_factory=lambda: Snippet(""))
+    start_line: int
+    start_column: int
+    end_line: int
+    end_column: int
+    snippet: Snippet
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dict with proper JSON field names."""
         return {
             "startLine": self.start_line,
-            "endLine": self.end_line,
             "startColumn": self.start_column,
+            "endLine": self.end_line,
             "endColumn": self.end_column,
-            "snippet": {"text": self.snippet.text},
+            "snippet": self.snippet.to_dict(),
         }
 
 
@@ -103,15 +116,12 @@ class Region:
 class PhysicalLocation:
     """SARIF physical location."""
 
-    artifact_location: ArtifactLocation = field(
-        metadata={"json": "artifactLocation"}
-    )
-    region: Region = field(default_factory=lambda: Region(0, 0, 0, 0))
+    artifact_location: ArtifactLocation
+    region: Region
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dict with proper JSON field names."""
         return {
-            "artifactLocation": {"uri": self.artifact_location.uri},
+            "artifactLocation": self.artifact_location.to_dict(),
             "region": self.region.to_dict(),
         }
 
@@ -120,27 +130,27 @@ class PhysicalLocation:
 class Location:
     """SARIF location."""
 
-    physical_location: PhysicalLocation = field(
-        metadata={"json": "physicalLocation"}
-    )
+    physical_location: PhysicalLocation
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dict with proper JSON field names."""
         return {"physicalLocation": self.physical_location.to_dict()}
 
 
 @dataclass
 class PartialFingerprints:
-    """SARIF partial fingerprints for commit metadata."""
+    """
+    SARIF partial fingerprints.
 
-    commit_sha: str = field(metadata={"json": "commitSha"})
-    email: str = ""
-    author: str = ""
-    date: str = ""
-    commit_message: str = field(default="", metadata={"json": "commitMessage"})
+    Used to store git metadata until revision data can be added elsewhere.
+    """
+
+    commit_sha: str
+    email: str
+    author: str
+    date: str
+    commit_message: str
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dict with proper JSON field names."""
         return {
             "commitSha": self.commit_sha,
             "email": self.email,
@@ -152,9 +162,12 @@ class PartialFingerprints:
 
 @dataclass
 class Properties:
-    """SARIF properties (for tags)."""
+    """SARIF properties (tags)."""
 
-    tags: List[str] = field(default_factory=list)
+    tags: List[str]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"tags": self.tags}
 
 
 @dataclass
@@ -162,21 +175,18 @@ class Result:
     """SARIF result (finding)."""
 
     message: Message
-    rule_id: str = field(metadata={"json": "ruleId"})
-    locations: List[Location] = field(default_factory=list)
-    partial_fingerprints: PartialFingerprints = field(
-        default_factory=lambda: PartialFingerprints(""), metadata={"json": "partialFingerprints"}
-    )
-    properties: Properties = field(default_factory=lambda: Properties())
+    rule_id: str
+    locations: List[Location]
+    partial_fingerprints: PartialFingerprints
+    properties: Properties
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dict with proper JSON field names."""
         return {
-            "message": {"text": self.message.text},
+            "message": self.message.to_dict(),
             "ruleId": self.rule_id,
             "locations": [loc.to_dict() for loc in self.locations],
             "partialFingerprints": self.partial_fingerprints.to_dict(),
-            "properties": {"tags": self.properties.tags},
+            "properties": self.properties.to_dict(),
         }
 
 
@@ -185,26 +195,21 @@ class Run:
     """SARIF run."""
 
     tool: Tool
-    results: List[Result] = field(default_factory=list)
+    results: List[Result]
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dict."""
-        return {
-            "tool": self.tool.to_dict(),
-            "results": [r.to_dict() for r in self.results],
-        }
+        return {"tool": self.tool.to_dict(), "results": [r.to_dict() for r in self.results]}
 
 
 @dataclass
 class Sarif:
-    """SARIF root object."""
+    """SARIF document root."""
 
-    schema: str = field(metadata={"json": "$schema"})
+    schema: str
     version: str
-    runs: List[Run] = field(default_factory=list)
+    runs: List[Run]
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dict with proper JSON field names."""
         return {
             "$schema": self.schema,
             "version": self.version,
@@ -213,22 +218,35 @@ class Sarif:
 
 
 class SarifReporter:
-    """SARIF 2.1.0 format reporter."""
+    """
+    SARIF reporter that writes findings to SARIF 2.1.0 format.
 
-    def __init__(self, ordered_rules: Optional[List[Any]] = None):
-        """Initialize SARIF reporter.
+    SARIF (Static Analysis Results Interchange Format) is a standard format
+    for static analysis tool output that enables interoperability and integration
+    with various development tools.
+    """
+
+    def __init__(self, ordered_rules: Optional[List[Any]] = None) -> None:
+        """
+        Initialize the SARIF reporter.
 
         Args:
-            ordered_rules: Optional list of Rule objects from config for consistent rule indices
+            ordered_rules: Optional list of config.Rule objects in the order they
+                          should appear in the SARIF output. This ensures consistent
+                          rule indices across runs.
         """
         self.ordered_rules = ordered_rules or []
 
     def write(self, writer: IO, findings: List[Finding]) -> None:
-        """Write findings to SARIF 2.1.0 format.
+        """
+        Write findings to the given output stream in SARIF 2.1.0 format.
 
         Args:
-            writer: Output stream to write to
-            findings: List of findings to report
+            writer: An IO object supporting write operations (file, stdout, etc.)
+            findings: List of Finding objects to write
+
+        Raises:
+            IOError: If writing to the output fails
         """
         sarif = Sarif(
             schema="https://json.schemastore.org/sarif-2.1.0.json",
@@ -236,39 +254,37 @@ class SarifReporter:
             runs=self._get_runs(findings),
         )
 
-        json.dump(sarif.to_dict(), writer, indent=" ")
+        # Write JSON with indentation
+        json.dump(sarif.to_dict(), writer, indent=1)
 
     def _get_runs(self, findings: List[Finding]) -> List[Run]:
-        """Create SARIF runs."""
+        """Create SARIF runs from findings."""
         return [Run(tool=self._get_tool(), results=self._get_results(findings))]
 
     def _get_tool(self) -> Tool:
-        """Create SARIF tool definition."""
+        """Create SARIF tool information."""
         rules = self._get_rules()
 
-        # Ensure empty rules is represented as [] not null
+        # Ensure that empty rules are represented as [] instead of null/None
         if not rules:
             rules = []
 
-        return Tool(
-            driver=Driver(
-                name=DRIVER,
-                semantic_version=VERSION,
-                information_uri="https://github.com/gitleaks/gitleaks",
-                rules=rules,
-            )
+        driver = Driver(
+            name=DRIVER,
+            semantic_version=VERSION,
+            information_uri="https://github.com/gitleaks/gitleaks",
+            rules=rules,
         )
 
-    def _get_rules(self) -> List[Rule]:
-        """Create SARIF rules from ordered_rules.
+        return Tool(driver=driver)
 
-        NOTE: Uses rule.id (not rule.rule_id) to match config.Rule model.
-        """
+    def _get_rules(self) -> List[Rule]:
+        """Create SARIF rules from ordered_rules."""
         rules = []
         for rule in self.ordered_rules:
             rules.append(
                 Rule(
-                    id=rule.id,  # CRITICAL: Use rule.id, not rule.rule_id
+                    id=rule.rule_id,
                     short_description=ShortDescription(text=rule.description),
                 )
             )
@@ -278,18 +294,23 @@ class SarifReporter:
         """Convert findings to SARIF results."""
         results = []
         for f in findings:
+            message_text = self._message_text(f)
+            locations = self._get_location(f)
+            partial_fingerprints = PartialFingerprints(
+                commit_sha=f.commit,
+                email=f.email,
+                author=f.author,
+                date=f.date,
+                commit_message=f.message,
+            )
+            properties = Properties(tags=f.tags)
+
             result = Result(
-                message=Message(text=self._message_text(f)),
+                message=Message(text=message_text),
                 rule_id=f.rule_id,
-                locations=self._get_locations(f),
-                partial_fingerprints=PartialFingerprints(
-                    commit_sha=f.commit,
-                    email=f.email,
-                    author=f.author,
-                    date=f.date,
-                    commit_message=f.message,
-                ),
-                properties=Properties(tags=f.tags),
+                locations=locations,
+                partial_fingerprints=partial_fingerprints,
+                properties=properties,
             )
             results.append(result)
         return results
@@ -300,22 +321,21 @@ class SarifReporter:
             return f"{f.rule_id} has detected secret for file {f.file}."
         return f"{f.rule_id} has detected secret for file {f.file} at commit {f.commit}."
 
-    def _get_locations(self, f: Finding) -> List[Location]:
-        """Create SARIF locations for a finding."""
+    def _get_location(self, f: Finding) -> List[Location]:
+        """Create SARIF location from finding."""
         # Use symlink file if present, otherwise use regular file
         uri = f.symlink_file if f.symlink_file else f.file
 
-        return [
-            Location(
-                physical_location=PhysicalLocation(
-                    artifact_location=ArtifactLocation(uri=uri),
-                    region=Region(
-                        start_line=f.start_line,
-                        end_line=f.end_line,
-                        start_column=f.start_column,
-                        end_column=f.end_column,
-                        snippet=Snippet(text=f.secret),
-                    ),
-                )
-            )
-        ]
+        region = Region(
+            start_line=f.start_line,
+            start_column=f.start_column,
+            end_line=f.end_line,
+            end_column=f.end_column,
+            snippet=Snippet(text=f.secret),
+        )
+
+        physical_location = PhysicalLocation(
+            artifact_location=ArtifactLocation(uri=uri), region=region
+        )
+
+        return [Location(physical_location=physical_location)]

@@ -253,3 +253,49 @@ class TestFiles:
             # Concatenating all fragments should give the original content
             reconstructed = "".join(f.raw for f in fragments_found)
             assert reconstructed == content
+
+    @pytest.mark.asyncio
+    async def test_scan_directory_with_archives(self, tmp_path):
+        """Test that archives in a directory are scanned when max_archive_depth > 0."""
+        import zipfile
+
+        # Create a test directory with an archive
+        test_dir = tmp_path / "test_dir"
+        test_dir.mkdir()
+
+        # Create a ZIP file with a text file inside
+        zip_path = test_dir / "test.zip"
+        with zipfile.ZipFile(zip_path, 'w') as zf:
+            zf.writestr("inner.txt", "This is content inside the archive\n")
+
+        # Create a regular file alongside the archive
+        regular_file = test_dir / "regular.txt"
+        regular_file.write_text("Regular file content\n")
+
+        # Scan directory with archive depth enabled
+        files_source = Files(
+            path=str(test_dir),
+            max_archive_depth=1  # Enable archive scanning
+        )
+
+        fragments_found = []
+
+        def collect_fragment(fragment, error):
+            if error is None:
+                fragments_found.append(fragment)
+            return None
+
+        await files_source.fragments(collect_fragment)
+
+        # Should have fragments from both the regular file and the archive
+        assert len(fragments_found) >= 2
+
+        # Find fragments from the archive
+        archive_fragments = [f for f in fragments_found if "!" in f.file_path]
+        assert len(archive_fragments) > 0, "Should have fragments from inside the archive"
+
+        # Verify archive fragment path uses "!" separator
+        archive_fragment = archive_fragments[0]
+        assert "test.zip!" in archive_fragment.file_path
+        assert "inner.txt" in archive_fragment.file_path
+        assert "inside the archive" in archive_fragment.raw

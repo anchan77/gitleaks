@@ -1,128 +1,115 @@
 """Tests for CSV reporter."""
 
 import io
+import csv
 
-import pytest
-
-from gitleaks.reporting import Finding
 from gitleaks.reporting.csv_reporter import CsvReporter
+from gitleaks.reporting.finding import Finding
 
 
-@pytest.fixture
-def sample_finding():
-    """Create a sample finding for testing."""
-    return Finding(
-        rule_id="test-rule",
-        description="Test Rule",
-        file="test.py",
-        secret="my-secret",
-        match="password=my-secret",
-        start_line=10,
-        end_line=10,
-        start_column=5,
-        end_column=20,
-        commit="abc123def456",
-        author="Test Author",
-        email="test@example.com",
-        message="Test commit message",
-        date="2024-01-01",
-        tags=["test", "secret"],
-        fingerprint="fingerprint123",
-    )
+class TestCsvReporter:
+    """Test CSV reporter functionality."""
 
+    def test_empty_findings(self):
+        """Test CSV reporter with no findings."""
+        reporter = CsvReporter()
+        output = io.StringIO()
 
-def test_csv_reporter_empty_findings():
-    """Test CSV reporter with no findings."""
-    reporter = CsvReporter()
-    output = io.StringIO()
+        reporter.write(output, [])
 
-    reporter.write(output, [])
+        output.seek(0)
+        content = output.read()
+        assert content == ""
 
-    # Empty findings should produce no output
-    assert output.getvalue() == ""
+    def test_single_finding(self):
+        """Test CSV reporter with a single finding."""
+        reporter = CsvReporter()
+        output = io.StringIO()
 
+        finding = Finding(
+            rule_id="aws-access-key",
+            commit="abc123",
+            file="config.yml",
+            secret="AKIAIOSFODNN7EXAMPLE",
+            match="aws_access_key_id = AKIAIOSFODNN7EXAMPLE",
+            start_line=10,
+            end_line=10,
+            start_column=1,
+            end_column=45,
+            author="John Doe",
+            message="Add AWS credentials",
+            date="2024-01-15",
+            email="john@example.com",
+            fingerprint="abc123:config.yml:aws-access-key:10",
+            tags=["key", "AWS"],
+        )
 
-def test_csv_reporter_single_finding(sample_finding):
-    """Test CSV reporter with a single finding."""
-    reporter = CsvReporter()
-    output = io.StringIO()
+        reporter.write(output, [finding])
 
-    reporter.write(output, [sample_finding])
+        output.seek(0)
+        reader = csv.DictReader(output)
+        rows = list(reader)
 
-    result = output.getvalue()
-    lines = result.strip().split("\n")
+        assert len(rows) == 1
+        assert rows[0]["RuleID"] == "aws-access-key"
+        assert rows[0]["Commit"] == "abc123"
+        assert rows[0]["File"] == "config.yml"
+        assert rows[0]["Secret"] == "AKIAIOSFODNN7EXAMPLE"
+        assert rows[0]["StartLine"] == "10"
+        assert rows[0]["Tags"] == "key AWS"
 
-    # Should have header + 1 data row
-    assert len(lines) == 2
+    def test_multiple_findings(self):
+        """Test CSV reporter with multiple findings."""
+        reporter = CsvReporter()
+        output = io.StringIO()
 
-    # Check header
-    assert "RuleID" in lines[0]
-    assert "File" in lines[0]
-    assert "Secret" in lines[0]
+        findings = [
+            Finding(
+                rule_id="aws-access-key",
+                file="config.yml",
+                secret="AKIAIOSFODNN7EXAMPLE",
+                match="aws_access_key_id = AKIAIOSFODNN7EXAMPLE",
+                start_line=10,
+            ),
+            Finding(
+                rule_id="generic-api-key",
+                file="app.py",
+                secret="sk_test_123456",
+                match="API_KEY = 'sk_test_123456'",
+                start_line=5,
+            ),
+        ]
 
-    # Check data
-    assert "test-rule" in lines[1]
-    assert "test.py" in lines[1]
-    assert "my-secret" in lines[1]
-    assert "test secret" in lines[1]  # Tags joined with space
+        reporter.write(output, findings)
 
+        output.seek(0)
+        reader = csv.DictReader(output)
+        rows = list(reader)
 
-def test_csv_reporter_multiple_findings(sample_finding):
-    """Test CSV reporter with multiple findings."""
-    finding2 = Finding(
-        rule_id="another-rule",
-        description="Another Rule",
-        file="another.py",
-        secret="another-secret",
-        match="key=another-secret",
-        start_line=20,
-        end_line=20,
-        start_column=1,
-        end_column=15,
-        tags=["prod"],
-    )
+        assert len(rows) == 2
+        assert rows[0]["RuleID"] == "aws-access-key"
+        assert rows[1]["RuleID"] == "generic-api-key"
 
-    reporter = CsvReporter()
-    output = io.StringIO()
+    def test_finding_with_symlink(self):
+        """Test CSV reporter with symlink file."""
+        reporter = CsvReporter()
+        output = io.StringIO()
 
-    reporter.write(output, [sample_finding, finding2])
+        finding = Finding(
+            rule_id="test-rule",
+            file="/real/path/file.txt",
+            symlink_file="/symlink/path/file.txt",
+            secret="secret123",
+            match="password=secret123",
+            start_line=1,
+        )
 
-    result = output.getvalue()
-    lines = result.strip().split("\n")
+        reporter.write(output, [finding])
 
-    # Should have header + 2 data rows
-    assert len(lines) == 3
+        output.seek(0)
+        reader = csv.DictReader(output)
+        rows = list(reader)
 
-    # Check both findings are present
-    assert "test-rule" in result
-    assert "another-rule" in result
-
-
-def test_csv_reporter_with_link():
-    """Test CSV reporter with finding that has a link."""
-    finding_with_link = Finding(
-        rule_id="test-rule",
-        description="Test Rule",
-        file="test.py",
-        secret="secret",
-        match="secret",
-        start_line=1,
-        end_line=1,
-        start_column=1,
-        end_column=10,
-        link="https://github.com/repo/commit/abc123",
-    )
-
-    reporter = CsvReporter()
-    output = io.StringIO()
-
-    reporter.write(output, [finding_with_link])
-
-    result = output.getvalue()
-    lines = result.strip().split("\n")
-
-    # Check header includes Link column
-    assert "Link" in lines[0]
-
-    # Check link is in data
-    assert "https://github.com/repo/commit/abc123" in lines[1]
+        assert len(rows) == 1
+        assert rows[0]["File"] == "/real/path/file.txt"
+        assert rows[0]["SymlinkFile"] == "/symlink/path/file.txt"

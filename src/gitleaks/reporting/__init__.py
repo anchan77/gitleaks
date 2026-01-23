@@ -6,7 +6,7 @@ This package contains reporter implementations for various formats:
 - CSV
 - SARIF
 - JUnit
-- Custom templates (Jinja2)
+- Custom templates
 
 The Reporter protocol defines the interface that all reporters must implement.
 """

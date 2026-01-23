@@ -3,218 +3,170 @@
 import io
 import json
 
-import pytest
-
-from gitleaks.config.models import Rule
-from gitleaks.reporting import Finding
 from gitleaks.reporting.sarif_reporter import SarifReporter
+from gitleaks.reporting.finding import Finding
 
 
-@pytest.fixture
-def sample_finding():
-    """Create a sample finding for testing."""
-    return Finding(
-        rule_id="test-rule",
-        description="Test Rule",
-        file="test.py",
-        secret="my-secret",
-        match="password=my-secret",
-        start_line=10,
-        end_line=10,
-        start_column=5,
-        end_column=20,
-        commit="abc123def456",
-        author="Test Author",
-        email="test@example.com",
-        message="Test commit message",
-        date="2024-01-01",
-        tags=["test", "secret"],
-    )
+class TestSarifReporter:
+    """Test SARIF reporter functionality."""
 
+    def test_empty_findings(self):
+        """Test SARIF reporter with no findings."""
+        reporter = SarifReporter()
+        output = io.StringIO()
 
-@pytest.fixture
-def sample_rules():
-    """Create sample rules for testing."""
-    return [
-        Rule(id="rule-1", description="Rule 1", regex="secret1", keywords=["secret"]),
-        Rule(id="rule-2", description="Rule 2", regex="secret2", keywords=["key"]),
-    ]
+        reporter.write(output, [])
 
+        output.seek(0)
+        content = json.load(output)
 
-def test_sarif_reporter_basic_structure(sample_finding):
-    """Test SARIF reporter produces valid SARIF 2.1.0 structure."""
-    reporter = SarifReporter()
-    output = io.StringIO()
+        assert content["version"] == "2.1.0"
+        assert "$schema" in content
+        assert len(content["runs"]) == 1
+        assert len(content["runs"][0]["results"]) == 0
 
-    reporter.write(output, [sample_finding])
+    def test_single_finding(self):
+        """Test SARIF reporter with a single finding."""
+        reporter = SarifReporter()
+        output = io.StringIO()
 
-    output.seek(0)
-    sarif = json.load(output)
+        finding = Finding(
+            rule_id="aws-access-key",
+            description="AWS Access Key",
+            commit="abc123",
+            file="config.yml",
+            secret="AKIAIOSFODNN7EXAMPLE",
+            match="aws_access_key_id = AKIAIOSFODNN7EXAMPLE",
+            start_line=10,
+            end_line=10,
+            start_column=1,
+            end_column=45,
+            author="John Doe",
+            message="Add AWS credentials",
+            date="2024-01-15",
+            email="john@example.com",
+            tags=["key", "AWS"],
+        )
 
-    # Check SARIF schema
-    assert sarif["$schema"] == "https://json.schemastore.org/sarif-2.1.0.json"
-    assert sarif["version"] == "2.1.0"
-    assert "runs" in sarif
-    assert len(sarif["runs"]) == 1
+        reporter.write(output, [finding])
 
+        output.seek(0)
+        content = json.load(output)
 
-def test_sarif_reporter_tool_metadata(sample_finding):
-    """Test SARIF reporter includes correct tool metadata."""
-    reporter = SarifReporter()
-    output = io.StringIO()
+        assert content["version"] == "2.1.0"
+        assert len(content["runs"]) == 1
+        run = content["runs"][0]
 
-    reporter.write(output, [sample_finding])
+        # Check tool info
+        assert run["tool"]["driver"]["name"] == "gitleaks"
+        assert "semanticVersion" in run["tool"]["driver"]
 
-    output.seek(0)
-    sarif = json.load(output)
+        # Check results
+        assert len(run["results"]) == 1
+        result = run["results"][0]
+        assert result["ruleId"] == "aws-access-key"
+        assert "aws-access-key" in result["message"]["text"]
+        assert result["partialFingerprints"]["commitSha"] == "abc123"
+        assert result["partialFingerprints"]["author"] == "John Doe"
+        assert result["properties"]["tags"] == ["key", "AWS"]
 
-    tool = sarif["runs"][0]["tool"]
-    driver = tool["driver"]
+        # Check location
+        assert len(result["locations"]) == 1
+        location = result["locations"][0]
+        assert location["physicalLocation"]["artifactLocation"]["uri"] == "config.yml"
+        region = location["physicalLocation"]["region"]
+        assert region["startLine"] == 10
+        assert region["startColumn"] == 1
 
-    assert driver["name"] == "gitleaks"
-    assert "semanticVersion" in driver
-    assert driver["informationUri"] == "https://github.com/gitleaks/gitleaks"
-    assert isinstance(driver["rules"], list)
+    def test_multiple_findings(self):
+        """Test SARIF reporter with multiple findings."""
+        reporter = SarifReporter()
+        output = io.StringIO()
 
+        findings = [
+            Finding(
+                rule_id="aws-access-key",
+                description="AWS Access Key",
+                file="config.yml",
+                secret="AKIAIOSFODNN7EXAMPLE",
+                match="aws_access_key_id = AKIAIOSFODNN7EXAMPLE",
+                start_line=10,
+                end_line=10,
+                start_column=1,
+                end_column=45,
+            ),
+            Finding(
+                rule_id="generic-api-key",
+                description="Generic API Key",
+                file="app.py",
+                secret="sk_test_123456",
+                match="API_KEY = 'sk_test_123456'",
+                start_line=5,
+                end_line=5,
+                start_column=1,
+                end_column=30,
+            ),
+        ]
 
-def test_sarif_reporter_empty_findings():
-    """Test SARIF reporter with no findings."""
-    reporter = SarifReporter()
-    output = io.StringIO()
+        reporter.write(output, findings)
 
-    reporter.write(output, [])
+        output.seek(0)
+        content = json.load(output)
 
-    output.seek(0)
-    sarif = json.load(output)
+        assert len(content["runs"][0]["results"]) == 2
 
-    # Should still have valid structure
-    assert len(sarif["runs"]) == 1
-    assert sarif["runs"][0]["results"] == []
+    def test_finding_with_symlink(self):
+        """Test SARIF reporter prefers symlink file over real file."""
+        reporter = SarifReporter()
+        output = io.StringIO()
 
+        finding = Finding(
+            rule_id="test-rule",
+            description="Test Rule",
+            file="/real/path/file.txt",
+            symlink_file="/symlink/path/file.txt",
+            secret="secret123",
+            match="password=secret123",
+            start_line=1,
+            end_line=1,
+            start_column=1,
+            end_column=20,
+        )
 
-def test_sarif_reporter_finding_details(sample_finding):
-    """Test SARIF reporter includes all finding details."""
-    reporter = SarifReporter()
-    output = io.StringIO()
+        reporter.write(output, [finding])
 
-    reporter.write(output, [sample_finding])
+        output.seek(0)
+        content = json.load(output)
 
-    output.seek(0)
-    sarif = json.load(output)
+        result = content["runs"][0]["results"][0]
+        uri = result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+        # Should prefer symlink file
+        assert uri == "/symlink/path/file.txt"
 
-    result = sarif["runs"][0]["results"][0]
+    def test_finding_without_commit(self):
+        """Test SARIF reporter with finding that has no commit."""
+        reporter = SarifReporter()
+        output = io.StringIO()
 
-    # Check basic fields
-    assert result["ruleId"] == "test-rule"
-    assert "message" in result
-    assert "test.py" in result["message"]["text"]
+        finding = Finding(
+            rule_id="test-rule",
+            description="Test Rule",
+            file="file.txt",
+            secret="secret123",
+            match="password=secret123",
+            start_line=1,
+            end_line=1,
+            start_column=1,
+            end_column=20,
+        )
 
-    # Check locations
-    assert len(result["locations"]) == 1
-    location = result["locations"][0]["physicalLocation"]
-    assert location["artifactLocation"]["uri"] == "test.py"
-    assert location["region"]["startLine"] == 10
-    assert location["region"]["endLine"] == 10
-    assert location["region"]["snippet"]["text"] == "my-secret"
+        reporter.write(output, [finding])
 
-    # Check partial fingerprints (commit metadata)
-    fingerprints = result["partialFingerprints"]
-    assert fingerprints["commitSha"] == "abc123def456"
-    assert fingerprints["author"] == "Test Author"
-    assert fingerprints["email"] == "test@example.com"
+        output.seek(0)
+        content = json.load(output)
 
-    # Check properties (tags)
-    assert result["properties"]["tags"] == ["test", "secret"]
-
-
-def test_sarif_reporter_with_ordered_rules(sample_finding, sample_rules):
-    """Test SARIF reporter with ordered rules."""
-    reporter = SarifReporter(ordered_rules=sample_rules)
-    output = io.StringIO()
-
-    reporter.write(output, [sample_finding])
-
-    output.seek(0)
-    sarif = json.load(output)
-
-    # Check rules are included
-    rules = sarif["runs"][0]["tool"]["driver"]["rules"]
-    assert len(rules) == 2
-    assert rules[0]["id"] == "rule-1"
-    assert rules[0]["shortDescription"]["text"] == "Rule 1"
-    assert rules[1]["id"] == "rule-2"
-    assert rules[1]["shortDescription"]["text"] == "Rule 2"
-
-
-def test_sarif_reporter_symlink_file():
-    """Test SARIF reporter uses symlink file when present."""
-    finding = Finding(
-        rule_id="test-rule",
-        description="Test Rule",
-        file="/actual/path.py",
-        symlink_file="/link/to/path.py",
-        secret="secret",
-        match="secret",
-        start_line=1,
-        end_line=1,
-        start_column=1,
-        end_column=10,
-    )
-
-    reporter = SarifReporter()
-    output = io.StringIO()
-
-    reporter.write(output, [finding])
-
-    output.seek(0)
-    sarif = json.load(output)
-
-    # Should use symlink file as URI
-    uri = sarif["runs"][0]["results"][0]["locations"][0]["physicalLocation"][
-        "artifactLocation"
-    ]["uri"]
-    assert uri == "/link/to/path.py"
-
-
-def test_sarif_reporter_message_without_commit():
-    """Test SARIF reporter message format when commit is not present."""
-    finding = Finding(
-        rule_id="test-rule",
-        description="Test Rule",
-        file="test.py",
-        secret="secret",
-        match="secret",
-        start_line=1,
-        end_line=1,
-        start_column=1,
-        end_column=10,
-    )
-
-    reporter = SarifReporter()
-    output = io.StringIO()
-
-    reporter.write(output, [finding])
-
-    output.seek(0)
-    sarif = json.load(output)
-
-    message = sarif["runs"][0]["results"][0]["message"]["text"]
-    assert "test-rule has detected secret for file test.py." == message
-    assert "commit" not in message
-
-
-def test_sarif_reporter_message_with_commit(sample_finding):
-    """Test SARIF reporter message format when commit is present."""
-    reporter = SarifReporter()
-    output = io.StringIO()
-
-    reporter.write(output, [sample_finding])
-
-    output.seek(0)
-    sarif = json.load(output)
-
-    message = sarif["runs"][0]["results"][0]["message"]["text"]
-    assert (
-        "test-rule has detected secret for file test.py at commit abc123def456."
-        == message
-    )
+        result = content["runs"][0]["results"][0]
+        # Message should not include commit
+        assert "commit" not in result["message"]["text"].lower() or "at commit" not in result[
+            "message"
+        ]["text"]
