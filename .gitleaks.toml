@@ -1,0 +1,20 @@
+# Gitleaks configuration for the gitleaks Python repository
+# This config extends the default config and allowlists files that contain
+# example patterns and test data.
+
+title = "Gitleaks Python development"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Allowlist for configuration files containing example patterns"
+paths = [
+  '''(^|/)src/gitleaks/config/gitleaks\.toml$''',
+  '''(^|/)tests/''',
+  '''(^|/)testdata/'''
+]
+
+[[allowlists]]
+description = "Ignore specific example patterns in config files"
+stopWords = ["bedrock-api-key-YmVkcm9jay5hbWF6b25hd3MuY29t"]
