@@ -209,6 +209,7 @@ def format_duration(duration: float) -> str:
     "--redact",
     type=int,
     default=0,
+    is_flag=False,
     flag_value=100,
     help="redact secrets from logs and stdout. To redact only parts of the secret just apply a percent value from 0..100. For example --redact=20 (default 100%%)",
 )

@@ -16,8 +16,11 @@ class TestDirectoryIntegration:
     @pytest.mark.asyncio
     async def test_scan_nogit_directory(self):
         """Test scanning the nogit test directory."""
-        # Use the testdata from the source repository
-        testdata_path = Path("/l2l/src/gitleaks/testdata/repos/nogit")
+        # Use the testdata from the destination repository
+        # Path is relative to the repository root
+        test_file_dir = Path(__file__).parent
+        repo_root = test_file_dir.parent.parent
+        testdata_path = repo_root / "testdata" / "repos" / "nogit"
 
         if not testdata_path.exists():
             pytest.skip("Testdata directory not available")
@@ -48,7 +51,10 @@ class TestDirectoryIntegration:
     @pytest.mark.asyncio
     async def test_scan_with_gitleaksignore(self):
         """Test that .gitleaksignore files are present but handled by config."""
-        testdata_path = Path("/l2l/src/gitleaks/testdata/repos/nogit")
+        # Use the testdata from the destination repository
+        test_file_dir = Path(__file__).parent
+        repo_root = test_file_dir.parent.parent
+        testdata_path = repo_root / "testdata" / "repos" / "nogit"
 
         if not testdata_path.exists():
             pytest.skip("Testdata directory not available")

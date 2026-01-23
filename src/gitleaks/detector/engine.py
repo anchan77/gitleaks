@@ -168,7 +168,15 @@ class Detector:
                     if on_finding:
                         on_finding(finding)
                     if self.verbose:
-                        print_finding(finding, self.no_color)
+                        # Apply redaction before printing if needed
+                        if self.redact > 0:
+                            # Create a copy to avoid modifying the stored finding
+                            import copy
+                            redacted_finding = copy.deepcopy(finding)
+                            redacted_finding.redact(self.redact)
+                            print_finding(redacted_finding, self.no_color)
+                        else:
+                            print_finding(finding, self.no_color)
 
     async def _detect_fragment(self, fragment: Fragment) -> List[Finding]:
         """
@@ -196,8 +204,8 @@ class Detector:
             logger.debug(f"skipping file: global allowlist matches {fragment.file_path}")
             return findings
 
-        # Check size limit
-        if fragment.raw:
+        # Check size limit (0 means no limit)
+        if fragment.raw and self.max_target_megabytes > 0:
             size_mb = len(fragment.raw) / (1024 * 1024)
             if size_mb > self.max_target_megabytes:
                 logger.debug(
