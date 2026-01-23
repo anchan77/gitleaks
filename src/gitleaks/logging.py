@@ -24,13 +24,13 @@ def add_timestamp(
     return event_dict
 
 
-def configure_logging(log_level: str = "INFO", use_json: bool = True) -> None:
+def configure_logging(log_level: str = "INFO", no_color: bool = False) -> None:
     """
     Configure the logging system.
 
     Args:
         log_level: Logging level (TRACE, DEBUG, INFO, WARN, ERROR, FATAL)
-        use_json: If True, output JSON format; otherwise use console format
+        no_color: If True, disable colors in console output
     """
     # Map gitleaks log levels to Python logging levels
     level_map = {
@@ -67,10 +67,8 @@ def configure_logging(log_level: str = "INFO", use_json: bool = True) -> None:
         structlog.processors.StackInfoRenderer(),
     ]
 
-    if use_json:
-        processors.append(structlog.processors.JSONRenderer())
-    else:
-        processors.append(structlog.dev.ConsoleRenderer())
+    # Always use console renderer (like zerolog's ConsoleWriter in Go)
+    processors.append(structlog.dev.ConsoleRenderer(colors=not no_color))
 
     structlog.configure(
         processors=processors,
