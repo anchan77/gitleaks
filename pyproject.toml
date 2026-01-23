@@ -1,0 +1,72 @@
+[tool.poetry]
+name = "gitleaks"
+version = "0.1.0"
+description = "Gitleaks is a SAST tool for detecting and preventing hardcoded secrets like passwords, API keys, and tokens in git repos"
+authors = ["Gitleaks Team"]
+readme = "README.md"
+license = "MIT"
+packages = [{include = "gitleaks", from = "src"}]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+click = "^8.1.0"
+pydantic = "^2.0"
+pydantic-settings = "^2.0"
+structlog = "^24.0"
+gitpython = "^3.1.0"
+regex = "^2024.0"
+jinja2 = "^3.1.0"
+junit-xml = "^1.9"
+py7zr = "^0.21.0"
+rarfile = "^4.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+pytest-asyncio = "^0.23.0"
+pytest-cov = "^4.1"
+pytest-mock = "^3.12"
+black = "^24.0"
+ruff = "^0.3.0"
+mypy = "^1.9"
+types-requests = "^2.31"
+
+[tool.poetry.scripts]
+gitleaks = "gitleaks.__main__:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--cov=gitleaks",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
