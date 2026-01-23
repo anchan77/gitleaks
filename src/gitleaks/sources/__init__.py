@@ -12,6 +12,8 @@ from collections.abc import Callable, AsyncIterator
 from typing import Protocol, Optional
 
 from .fragment import Fragment, CommitInfo, RemoteInfo
+from .dir_source import Files, ScanTarget
+from .file import File
 
 
 # Type alias for the callback function used to yield fragments
@@ -65,4 +67,7 @@ __all__ = [
     "RemoteInfo",
     "FragmentsFunc",
     "Source",
+    "Files",
+    "File",
+    "ScanTarget",
 ]
