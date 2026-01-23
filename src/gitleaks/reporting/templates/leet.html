@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gitleaks Report - LEET Style</title>
+    <style>
+        :root {
+          --bg-color: #000000;
+          --text-color: #00ff00;
+          --border-color: #00ff00;
+          --header-bg: #001100;
+        }
+
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        body {
+          font-family: 'Courier New', monospace;
+          background-color: var(--bg-color);
+          color: var(--text-color);
+          padding: 20px;
+        }
+
+        .header {
+          text-align: center;
+          padding: 20px;
+          background-color: var(--header-bg);
+          border: 2px solid var(--border-color);
+          margin-bottom: 20px;
+        }
+
+        .header h1 {
+          font-size: 2.5rem;
+          text-shadow: 0 0 10px var(--text-color);
+        }
+
+        .stats {
+          display: flex;
+          justify-content: space-around;
+          margin: 20px 0;
+          padding: 15px;
+          border: 2px solid var(--border-color);
+        }
+
+        .stat-item {
+          text-align: center;
+        }
+
+        .stat-value {
+          font-size: 2rem;
+          font-weight: bold;
+        }
+
+        .findings-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 20px;
+        }
+
+        .findings-table th,
+        .findings-table td {
+          border: 1px solid var(--border-color);
+          padding: 10px;
+          text-align: left;
+        }
+
+        .findings-table th {
+          background-color: var(--header-bg);
+          font-weight: bold;
+        }
+
+        .findings-table tr:hover {
+          background-color: #001100;
+        }
+
+        .secret {
+          background-color: #ff0000;
+          color: #ffff00;
+          padding: 2px 5px;
+          font-weight: bold;
+        }
+
+        .meta {
+          font-size: 0.85rem;
+          opacity: 0.8;
+        }
+
+        .tag {
+          display: inline-block;
+          background-color: var(--border-color);
+          color: var(--bg-color);
+          padding: 2px 8px;
+          margin: 2px;
+          border-radius: 3px;
+          font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>╔═══ G1TL3@K5 R3P0RT ═══╗</h1>
+        <p>{{ now().strftime('%Y-%m-%d %H:%M:%S UTC') }}</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-item">
+            <div class="stat-value">{{ findings|length }}</div>
+            <div>TOTAL L3@K5</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ findings|map(attribute='file')|unique|list|length }}</div>
+            <div>F1L35 @FF3CT3D</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ findings|map(attribute='rule_id')|unique|list|length }}</div>
+            <div>RUL35 TR1GG3R3D</div>
+        </div>
+    </div>
+
+    {% if findings %}
+    <table class="findings-table">
+        <thead>
+            <tr>
+                <th>RUL3</th>
+                <th>F1L3</th>
+                <th>L1N3</th>
+                <th>S3CR3T</th>
+                <th>M3T@</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for finding in findings %}
+            <tr>
+                <td>{{ finding.rule_id }}</td>
+                <td>
+                    {{ finding.file }}
+                    {% if finding.tags %}
+                    <br>
+                    {% for tag in finding.tags %}
+                    <span class="tag">{{ tag }}</span>
+                    {% endfor %}
+                    {% endif %}
+                </td>
+                <td>{{ finding.start_line }}</td>
+                <td><span class="secret">{{ finding.secret }}</span></td>
+                <td class="meta">
+                    {% if finding.commit %}
+                    Commit: {{ finding.commit[:7] }}<br>
+                    {% endif %}
+                    {% if finding.author %}
+                    Author: {{ finding.author }}<br>
+                    {% endif %}
+                    Entropy: {{ "%.2f"|format(finding.entropy) }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align: center; padding: 50px;">N0 L3@K5 F0UND - 5Y5T3M 53CUR3!</p>
+    {% endif %}
+
+    <div style="text-align: center; margin-top: 40px; padding: 20px; border-top: 2px solid var(--border-color);">
+        <p>╚═══ P0W3R3D BY G1TL3@K5 ═══╝</p>
+    </div>
+</body>
+</html>

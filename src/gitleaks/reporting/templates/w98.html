@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gitleaks Report - Windows 98 Style</title>
+    <style>
+        body {
+          margin: 0;
+          padding: 20px;
+          font-family: 'MS Sans Serif', Arial, sans-serif;
+          font-size: 11px;
+          background: #008080;
+        }
+
+        .window {
+          background: #c0c0c0;
+          border: 2px outset #dfdfdf;
+          box-shadow: 2px 2px 0 #000;
+          margin: 0 auto;
+          max-width: 800px;
+        }
+
+        .title-bar {
+          background: linear-gradient(180deg, #000080 0%, #1084d0 100%);
+          color: white;
+          padding: 3px 5px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .title-bar-text {
+          font-weight: bold;
+          letter-spacing: 0;
+        }
+
+        .title-bar-controls {
+          display: flex;
+          gap: 2px;
+        }
+
+        .title-bar-controls button {
+          width: 16px;
+          height: 14px;
+          padding: 0;
+          border: 1px outset #dfdfdf;
+          background: #c0c0c0;
+          font-size: 10px;
+        }
+
+        .menu-bar {
+          background: #c0c0c0;
+          border-bottom: 1px solid #808080;
+          padding: 3px;
+        }
+
+        .menu-item {
+          display: inline-block;
+          padding: 2px 8px;
+        }
+
+        .menu-item:hover {
+          background: #000080;
+          color: white;
+        }
+
+        .toolbar {
+          background: #c0c0c0;
+          border-bottom: 1px solid #808080;
+          padding: 5px;
+        }
+
+        .button {
+          background: #c0c0c0;
+          border: 2px outset #dfdfdf;
+          padding: 3px 10px;
+          margin: 0 2px;
+          font-size: 11px;
+        }
+
+        .button:active {
+          border-style: inset;
+        }
+
+        .content {
+          background: white;
+          min-height: 400px;
+          padding: 10px;
+        }
+
+        .status-bar {
+          background: #c0c0c0;
+          border-top: 1px solid #dfdfdf;
+          padding: 3px 5px;
+          display: flex;
+          gap: 1px;
+        }
+
+        .status-bar-field {
+          padding: 2px 5px;
+          border: 1px inset #808080;
+          flex: 1;
+        }
+
+        .finding-box {
+          border: 2px groove #dfdfdf;
+          margin: 10px 0;
+          padding: 10px;
+          background: #f0f0f0;
+        }
+
+        .field-label {
+          font-weight: bold;
+          display: inline-block;
+          width: 100px;
+        }
+
+        .secret-box {
+          background: yellow;
+          border: 1px solid #808080;
+          padding: 2px 5px;
+          font-family: 'Courier New', monospace;
+          display: inline-block;
+        }
+
+        .tab-row {
+          background: #c0c0c0;
+          padding-top: 3px;
+        }
+
+        .tab {
+          display: inline-block;
+          background: #c0c0c0;
+          border: 2px outset #dfdfdf;
+          border-bottom: none;
+          padding: 3px 15px;
+          margin-right: 2px;
+        }
+
+        .tab.active {
+          background: white;
+          border-bottom: 2px solid white;
+          margin-bottom: -2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="window">
+        <div class="title-bar">
+            <div class="title-bar-text">🔒 Gitleaks Report</div>
+            <div class="title-bar-controls">
+                <button>_</button>
+                <button>□</button>
+                <button>×</button>
+            </div>
+        </div>
+
+        <div class="menu-bar">
+            <span class="menu-item">File</span>
+            <span class="menu-item">Edit</span>
+            <span class="menu-item">View</span>
+            <span class="menu-item">Help</span>
+        </div>
+
+        <div class="toolbar">
+            <button class="button">⟲ Refresh</button>
+            <button class="button">🔍 Search</button>
+            <button class="button">💾 Save</button>
+        </div>
+
+        <div class="tab-row">
+            <div class="tab active">Findings ({{ findings|length }})</div>
+            <div class="tab">Summary</div>
+        </div>
+
+        <div class="content">
+            <p><strong>Scan Date:</strong> {{ now().strftime('%m/%d/%Y %I:%M %p') }}</p>
+            <p><strong>Total Findings:</strong> {{ findings|length }}</p>
+            <p><strong>Files Affected:</strong> {{ findings|map(attribute='file')|unique|list|length }}</p>
+            <p><strong>Rules Triggered:</strong> {{ findings|map(attribute='rule_id')|unique|list|length }}</p>
+
+            <hr style="border: 1px inset #808080; margin: 15px 0;">
+
+            {% if findings %}
+            {% for finding in findings %}
+            <div class="finding-box">
+                <p><span class="field-label">Rule ID:</span> {{ finding.rule_id }}</p>
+                <p><span class="field-label">Description:</span> {{ finding.description }}</p>
+                <p><span class="field-label">File:</span> {{ finding.file }}</p>
+                <p><span class="field-label">Line:</span> {{ finding.start_line }}</p>
+                <p><span class="field-label">Secret:</span> <span class="secret-box">{{ finding.secret }}</span></p>
+                {% if finding.commit %}
+                <p><span class="field-label">Commit:</span> {{ finding.commit[:7] }}</p>
+                {% endif %}
+                {% if finding.author %}
+                <p><span class="field-label">Author:</span> {{ finding.author }}</p>
+                {% endif %}
+                <p><span class="field-label">Entropy:</span> {{ "%.2f"|format(finding.entropy) }}</p>
+                {% if finding.tags %}
+                <p><span class="field-label">Tags:</span> {{ finding.tags|join(', ') }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="text-align: center; padding: 50px;">
+                <p style="font-size: 14px;"><strong>✓ No secrets found!</strong></p>
+                <p>Your code appears to be secure.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="status-bar">
+            <div class="status-bar-field">Ready</div>
+            <div class="status-bar-field" style="flex: 0 0 100px;">{{ findings|length }} item(s)</div>
+        </div>
+    </div>
+</body>
+</html>

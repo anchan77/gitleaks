@@ -24,22 +24,24 @@ WHITESPACE_CHARS = {ord(' '), ord('\t'), ord('\n'), ord('\r')}
 IS_WINDOWS = platform.system() == "Windows"
 
 
-def is_archive(path: str) -> bool:
+def is_archive(path: str, peek_bytes: Optional[bytes] = None) -> bool:
     """
     Check if a file path is likely an archive or compressed file.
 
-    This performs a lightweight check based on file extensions.
-    More thorough checks can be done by the archive source provider.
+    This performs both extension-based and magic byte detection to identify
+    archive files. Extension-based detection is always performed. If peek_bytes
+    are provided, magic byte detection is also performed for more accurate results.
 
     Args:
         path: File path to check
+        peek_bytes: Optional first bytes of the file for magic byte detection
 
     Returns:
         True if the path appears to be an archive file
 
     Note:
-        This is a basic implementation. The Go version uses the archives library
-        for more sophisticated detection. For now, we use extension-based detection.
+        This is analogous to the Go version which uses the archives library.
+        We use extension-based detection supplemented with magic byte checks.
     """
     if not path:
         return False
@@ -47,11 +49,22 @@ def is_archive(path: str) -> bool:
     # Common archive extensions
     archive_extensions = {
         '.zip', '.tar', '.gz', '.tgz', '.bz2', '.tbz2', '.xz', '.txz',
-        '.7z', '.rar', '.tar.gz', '.tar.bz2', '.tar.xz', '.tar.zst'
+        '.7z', '.rar', '.tar.gz', '.tar.bz2', '.tar.xz', '.tar.zst', '.zst'
     }
 
     path_lower = path.lower()
-    return any(path_lower.endswith(ext) for ext in archive_extensions)
+
+    # Check extension first
+    if any(path_lower.endswith(ext) for ext in archive_extensions):
+        return True
+
+    # If peek bytes provided, check magic bytes
+    if peek_bytes:
+        from .archive_source import detect_archive_type_from_bytes
+        archive_type = detect_archive_type_from_bytes(peek_bytes)
+        return archive_type is not None
+
+    return False
 
 
 def should_skip_path(cfg: Optional[Config], path: str) -> bool:

@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gitleaks Security Findings Report</title>
+    <style>
+        :root {
+          --primary-color: #2563eb;
+          --primary-color-rgb: 37, 99, 235;
+          --primary-dark: #1d4ed8;
+          --primary-light: #3b82f6;
+          --secondary-color: #f3f4f6;
+          --surface-color: #ffffff;
+          --border-color: #e5e7eb;
+          --text-color: #374151;
+          --text-light: #6b7280;
+          --text-inverse: #ffffff;
+          --error-color: #ef4444;
+          --warning-color: #f59e0b;
+          --success-color: #10b981;
+          --highlight-color: rgba(255, 255, 0, 0.2);
+          --highlight-secret: rgba(239, 68, 68, 0.2);
+          --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          --radius: 0;
+          --font-mono: 'Fira Code', 'IBM Plex Mono', 'Source Code Pro', monospace;
+          --font-main: 'IBM Plex Sans', 'Roboto Mono', monospace;
+        }
+
+        body.dark-mode {
+          --primary-color: #1e40af;
+          --primary-dark: #1e3a8a;
+          --primary-light: #3b82f6;
+          --secondary-color: #1f2937;
+          --surface-color: #111827;
+          --border-color: #374151;
+          --text-color: #f3f4f6;
+          --text-light: #9ca3af;
+          --text-inverse: #111827;
+          --highlight-color: rgba(255, 255, 0, 0.3);
+          --highlight-secret: rgba(255, 99, 99, 0.3);
+        }
+
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        html, body {
+          height: 100%;
+          font-family: var(--font-main);
+          font-size: 16px;
+          line-height: 1.5;
+          color: var(--text-color);
+          background-color: var(--surface-color);
+        }
+
+        .app-container {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          max-width: 100%;
+          overflow: hidden;
+        }
+
+        .app-header {
+          height: 60px;
+          background-color: var(--primary-color);
+          color: var(--text-inverse);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 1.5rem;
+          flex-shrink: 0;
+          box-shadow: var(--shadow);
+          z-index: 10;
+        }
+
+        .logo h1 {
+          font-size: 1.5rem;
+          font-weight: 600;
+        }
+
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.5rem 1rem;
+          border-radius: var(--radius);
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background-color 0.2s, color 0.2s;
+          border: none;
+          font-family: var(--font-main);
+        }
+
+        .btn-primary {
+          background-color: var(--primary-color);
+          color: var(--text-inverse);
+        }
+
+        .btn-primary:hover {
+          background-color: var(--primary-dark);
+        }
+
+        .btn-sm {
+          padding: 0.375rem 0.75rem;
+          font-size: 0.8125rem;
+        }
+
+        .dark-mode-toggle {
+          background-color: rgba(255, 255, 255, 0.2);
+          color: var(--text-inverse);
+          border: none;
+          padding: 0.5rem;
+          border-radius: var(--radius);
+          cursor: pointer;
+          font-size: 1rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background-color 0.2s;
+        }
+
+        .dark-mode-toggle:hover {
+          background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .app-main {
+          flex: 1;
+          overflow-y: auto;
+          padding: 1.5rem;
+        }
+
+        .report-info {
+          background-color: var(--secondary-color);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius);
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .report-info h2 {
+          font-size: 1.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .report-date {
+          font-size: 0.875rem;
+          color: var(--text-light);
+          margin-bottom: 1rem;
+        }
+
+        .report-stats {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 1rem;
+          margin-top: 1rem;
+        }
+
+        .stat-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
+
+        .stat-value {
+          font-size: 2rem;
+          font-weight: 700;
+          color: var(--primary-color);
+        }
+
+        .stat-label {
+          font-size: 0.875rem;
+          color: var(--text-light);
+          margin-top: 0.25rem;
+        }
+
+        .filters {
+          background-color: var(--secondary-color);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius);
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1rem;
+          align-items: end;
+        }
+
+        .filter-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          min-width: 200px;
+          flex: 1;
+        }
+
+        .filter-label {
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+
+        .filter-input {
+          padding: 0.5rem 0.75rem;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius);
+          font-size: 0.875rem;
+          background-color: var(--surface-color);
+          color: var(--text-color);
+          font-family: var(--font-main);
+        }
+
+        .table-wrapper {
+          overflow-x: auto;
+          background-color: var(--surface-color);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius);
+        }
+
+        .findings-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.875rem;
+        }
+
+        .findings-table thead {
+          background-color: var(--secondary-color);
+          position: sticky;
+          top: 0;
+          z-index: 5;
+        }
+
+        .findings-table th {
+          text-align: left;
+          padding: 0.75rem;
+          font-weight: 600;
+          border-bottom: 2px solid var(--border-color);
+        }
+
+        .findings-table td {
+          padding: 0.75rem;
+          border-bottom: 1px solid var(--border-color);
+          vertical-align: top;
+        }
+
+        .findings-table tbody tr:hover {
+          background-color: var(--secondary-color);
+        }
+
+        .file-path-container {
+          margin-bottom: 0.5rem;
+        }
+
+        .file-path {
+          font-family: var(--font-mono);
+          font-size: 0.8125rem;
+          word-break: break-all;
+        }
+
+        .tag-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.25rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .tag {
+          display: inline-block;
+          padding: 0.125rem 0.5rem;
+          background-color: var(--primary-color);
+          color: var(--text-inverse);
+          border-radius: var(--radius);
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+
+        .description-text {
+          display: block;
+          word-wrap: break-word;
+          position: relative;
+        }
+
+        .description-collapsed {
+          max-height: 3em;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .description-expanded {
+          max-height: none;
+        }
+
+        .description-toggle {
+          display: inline-block;
+          margin-left: 0.5rem;
+          cursor: pointer;
+          color: var(--primary-color);
+          font-weight: bold;
+          user-select: none;
+        }
+
+        .secret-container {
+          font-family: var(--font-mono);
+          font-size: 0.8125rem;
+        }
+
+        .secret-match {
+          background-color: var(--highlight-secret);
+          padding: 0.25rem;
+          border-radius: var(--radius);
+          word-break: break-all;
+          margin-bottom: 0.5rem;
+        }
+
+        .match-toggle {
+          display: inline-block;
+          padding: 0.25rem 0.5rem;
+          background-color: var(--primary-color);
+          color: var(--text-inverse);
+          border: none;
+          border-radius: var(--radius);
+          font-size: 0.75rem;
+          cursor: pointer;
+          margin-bottom: 0.5rem;
+        }
+
+        .match-toggle:hover {
+          background-color: var(--primary-dark);
+        }
+
+        .match-content {
+          background-color: var(--secondary-color);
+          padding: 0.5rem;
+          border-radius: var(--radius);
+          white-space: pre-wrap;
+          word-break: break-all;
+          max-height: 200px;
+          overflow-y: auto;
+        }
+
+        .match-content.hidden {
+          display: none;
+        }
+
+        .meta-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .meta-item {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          font-size: 0.8125rem;
+        }
+
+        .meta-label {
+          font-weight: 600;
+          color: var(--text-light);
+        }
+
+        .meta-value {
+          color: var(--text-color);
+        }
+
+        .commit-link {
+          color: var(--primary-color);
+          text-decoration: none;
+        }
+
+        .commit-link:hover {
+          text-decoration: underline;
+        }
+
+        .app-footer {
+          height: 50px;
+          background-color: var(--secondary-color);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 1.5rem;
+          border-top: 1px solid var(--border-color);
+          flex-shrink: 0;
+          font-size: 0.875rem;
+        }
+
+        @media (max-width: 768px) {
+          .app-main {
+            padding: 1rem;
+          }
+          .report-stats {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .filters {
+            flex-direction: column;
+          }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <h1>🔐 Gitleaks</h1>
+            </div>
+            <div class="header-actions">
+                <button class="dark-mode-toggle" id="darkModeToggle">🌓</button>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <div class="report-info">
+                <h2>Security Scan Report</h2>
+                <p class="report-date">Generated on {{ now().strftime('%b %d, %Y %H:%M:%S UTC') }}</p>
+
+                <div class="report-stats">
+                    <div class="stat-item">
+                        <span class="stat-value">{{ findings|length }}</span>
+                        <span class="stat-label">Total Findings</span>
+                    </div>
+
+                    <div class="stat-item">
+                        <span class="stat-value" id="filesCount">-</span>
+                        <span class="stat-label">Files Affected</span>
+                    </div>
+
+                    <div class="stat-item">
+                        <span class="stat-value" id="rulesCount">-</span>
+                        <span class="stat-label">Unique Rules Triggered</span>
+                    </div>
+
+                    <div class="stat-item" id="scanModeContainer">
+                        <span class="stat-value" id="scanMode">-</span>
+                        <span class="stat-label">Scan Mode</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filters">
+                <div class="filter-group">
+                    <label class="filter-label" for="filterRule">Filter by Rule:</label>
+                    <select class="filter-input" id="filterRule">
+                        <option value="all">All Rules</option>
+                        <!-- Rule options will be populated by JavaScript -->
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="filterFile">Filter by File:</label>
+                    <input type="text" class="filter-input" id="filterFile" placeholder="Enter filename...">
+                </div>
+
+                <div class="filter-group">
+                    <button class="btn btn-primary btn-sm" id="resetFilters">Reset Filters</button>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="findings-table" id="findingsTable">
+                    <thead>
+                        <tr>
+                            <th>Rule</th>
+                            <th>File</th>
+                            <th>Description</th>
+                            <th>Secret</th>
+                            <th>Metadata</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for finding in findings %}
+                        <tr data-rule="{{ finding.rule_id }}" data-file="{{ finding.file }}">
+                            <td>{{ finding.rule_id }}</td>
+                            <td>
+                                <div class="file-path-container">
+                                    <span class="file-path" title="{{ finding.file }}">{{ finding.file }}</span>
+                                </div>
+                                <div class="tag-list">
+                                    {% for tag in finding.tags %}
+                                    <span class="tag">{{ tag }}</span>
+                                    {% endfor %}
+                                </div>
+                                <div class="meta-row">
+                                    <div class="meta-item">
+                                        <span class="meta-label">Line:</span>
+                                        <span class="meta-value">{{ finding.start_line }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="description-text">{{ finding.description }}</span>
+                                <span class="description-toggle" title="Expand/Collapse">↕</span>
+                            </td>
+                            <td>
+                                <div class="secret-container" data-secret="{{ finding.secret }}" data-match="{{ finding.match }}">
+                                    <div class="secret-match">{{ finding.secret }}</div>
+                                    <button type="button" class="match-toggle" title="Show/Hide Full Match Context">Show Context</button>
+                                    <div class="match-content hidden" data-raw-match="{{ finding.match }}">{{ finding.match }}</div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="meta-row">
+                                    <div class="meta-item">
+                                        <span class="meta-label">Entropy:</span>
+                                        <span class="meta-value">{{ "%.2f"|format(finding.entropy) }}</span>
+                                    </div>
+                                {% if finding.commit %}
+                                    <div class="meta-item commit-info">
+                                        <span class="meta-label">Commit:</span>
+                                        <span class="meta-value">{{ finding.commit[:7] if finding.commit|length > 7 else finding.commit }}</span>
+                                    </div>
+                                    {% if finding.author %}
+                                    <div class="meta-item commit-info">
+                                        <span class="meta-label">Author:</span>
+                                        <span class="meta-value">{{ finding.author }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if finding.date %}
+                                    <div class="meta-item commit-info">
+                                        <span class="meta-label">Date:</span>
+                                        <span class="meta-value">{{ finding.date }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if finding.link %}
+                                    <div class="meta-item commit-info">
+                                        <span class="meta-label">Link:</span>
+                                        <span class="meta-value"><a href="{{ finding.link }}" target="_blank" class="commit-link">View Commit</a></span>
+                                    </div>
+                                    {% endif %}
+                                {% else %}
+                                    {% if finding.author %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Author:</span>
+                                        <span class="meta-value">{{ finding.author }}</span>
+                                    </div>
+                                    {% endif %}
+                                {% endif %}
+                                </div>
+
+                                {% if not finding.match %}
+                                <div class="match-content" data-raw-match="">-</div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
+        <footer class="app-footer">
+            <div>Generated by Gitleaks</div>
+            <div>Total Findings: <strong>{{ findings|length }}</strong></div>
+        </footer>
+    </div>
+
+    <script>
+        // Calculate statistics from findings data
+        function processData() {
+            const rows = document.querySelectorAll('#findingsTable tbody tr');
+            const files = new Set();
+            const rules = new Set();
+            let hasCommit = false;
+
+            rows.forEach(row => {
+                files.add(row.dataset.file);
+                rules.add(row.dataset.rule);
+                if (row.querySelector('.commit-info')) {
+                    hasCommit = true;
+                }
+            });
+
+            document.getElementById('filesCount').textContent = files.size;
+            document.getElementById('rulesCount').textContent = rules.size;
+            document.getElementById('scanMode').textContent = hasCommit ? 'Git Repository' : 'Directory/Files';
+
+            // Populate rule filter options
+            const filterRule = document.getElementById('filterRule');
+            rules.forEach(rule => {
+                const option = document.createElement('option');
+                option.value = rule;
+                option.textContent = rule;
+                filterRule.appendChild(option);
+            });
+        }
+
+        // Hide toggle buttons when secret and match are the same
+        function hideRedundantToggleButtons() {
+            document.querySelectorAll('.secret-container').forEach(container => {
+                const secret = container.dataset.secret;
+                const match = container.dataset.match;
+                const toggleButton = container.querySelector('.match-toggle');
+
+                if (secret === match) {
+                    if (toggleButton) {
+                        toggleButton.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        // Setup toggle buttons
+        function setupToggleButtons() {
+            document.querySelectorAll('.match-toggle').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const matchContent = this.nextElementSibling;
+                    if (matchContent.classList.contains('hidden')) {
+                        matchContent.classList.remove('hidden');
+                        this.textContent = 'Hide Context';
+                    } else {
+                        matchContent.classList.add('hidden');
+                        this.textContent = 'Show Context';
+                    }
+                });
+            });
+
+            // Setup description toggle
+            document.querySelectorAll('.description-text').forEach(descriptionText => {
+                const toggleBtn = descriptionText.nextElementSibling;
+                if (!toggleBtn || !toggleBtn.classList.contains('description-toggle')) return;
+
+                // Initial state: collapsed
+                descriptionText.classList.add('description-collapsed');
+
+                toggleBtn.addEventListener('click', () => {
+                    if (descriptionText.classList.contains('description-collapsed')) {
+                        descriptionText.classList.remove('description-collapsed');
+                        descriptionText.classList.add('description-expanded');
+                        toggleBtn.textContent = '↑';
+                    } else {
+                        descriptionText.classList.remove('description-expanded');
+                        descriptionText.classList.add('description-collapsed');
+                        toggleBtn.textContent = '↕';
+                    }
+                });
+            });
+        }
+
+        // Initialize dark mode from user preference
+        function initDarkMode() {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const storedPreference = localStorage.getItem('darkMode');
+
+            if (storedPreference === 'true' || (storedPreference === null && prefersDark)) {
+                document.body.classList.add('dark-mode');
+            }
+        }
+
+        // Toggle dark mode
+        document.getElementById('darkModeToggle').addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+        });
+
+        // Filter functionality
+        function applyFilters() {
+            const ruleFilter = document.getElementById('filterRule').value;
+            const fileFilter = document.getElementById('filterFile').value.toLowerCase();
+
+            const rows = document.querySelectorAll('#findingsTable tbody tr');
+
+            rows.forEach(row => {
+                const ruleMatch = ruleFilter === 'all' || row.dataset.rule === ruleFilter;
+                const fileMatch = fileFilter === '' || row.dataset.file.toLowerCase().includes(fileFilter);
+
+                if (ruleMatch && fileMatch) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Update visible count
+            const visibleFindings = document.querySelectorAll('#findingsTable tbody tr:not([style*="display: none"])').length;
+            document.querySelector('.app-footer strong').textContent = visibleFindings;
+        }
+
+        document.getElementById('filterRule').addEventListener('change', applyFilters);
+        document.getElementById('filterFile').addEventListener('input', applyFilters);
+        document.getElementById('resetFilters').addEventListener('click', function() {
+            document.getElementById('filterRule').value = 'all';
+            document.getElementById('filterFile').value = '';
+            applyFilters();
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            processData();
+            hideRedundantToggleButtons(); // Hide toggle buttons for matching secrets
+            setupToggleButtons();
+            initDarkMode();
+        });
+    </script>
+</body>
+</html>
