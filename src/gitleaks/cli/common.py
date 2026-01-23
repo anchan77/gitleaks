@@ -9,7 +9,8 @@ import asyncio
 import os
 import sys
 import time
-from typing import Optional
+from datetime import datetime
+from typing import IO, List, Optional
 
 import click
 
@@ -22,6 +23,15 @@ from gitleaks.logging import (
     fatal,
     info,
     warn,
+)
+from gitleaks.reporting import (
+    CsvReporter,
+    Finding,
+    JsonReporter,
+    JunitReporter,
+    Reporter,
+    SarifReporter,
+    TemplateReporter,
 )
 
 # Banner displayed at startup (unless --no-banner is used)
@@ -167,8 +177,8 @@ def format_duration(duration: float) -> str:
 )
 @click.option(
     "--report-template",
-    type=click.Path(exists=True),
-    help="template file used to generate the report (implies --report-format=template)",
+    type=str,
+    help="template file or built-in template name (basic, leet, myspace, w98, wxp) used to generate the report (implies --report-format=template)",
 )
 @click.option(
     "--baseline-path",
@@ -371,3 +381,92 @@ def file_exists(file_path: str) -> bool:
         return os.path.isfile(file_path)
     except Exception:
         return False
+
+
+def get_reporter(
+    ctx: GitleaksContext, ordered_rules: Optional[List] = None
+) -> Reporter:
+    """
+    Get the appropriate reporter based on CLI flags and configuration.
+
+    Args:
+        ctx: Gitleaks context containing report format and template settings
+        ordered_rules: Optional list of Rule objects for SARIF reporter
+
+    Returns:
+        Reporter instance configured according to user preferences
+
+    Raises:
+        SystemExit: If reporter configuration is invalid
+    """
+    report_format = ctx.report_format
+    report_template = ctx.report_template
+    report_path = ctx.report_path
+
+    # If template is specified, override format to template
+    if report_template:
+        report_format = "template"
+
+    # Infer format from file extension if not explicitly set
+    if not report_format and report_path and report_path != "-":
+        report_path_lower = report_path.lower()
+        if report_path_lower.endswith(".csv"):
+            report_format = "csv"
+        elif report_path_lower.endswith(".sarif") or report_path_lower.endswith(
+            ".sarif.json"
+        ):
+            report_format = "sarif"
+        elif report_path_lower.endswith(".xml"):
+            report_format = "junit"
+        elif report_path_lower.endswith(".json"):
+            report_format = "json"
+
+    # Default to JSON if still not set
+    if not report_format:
+        report_format = "json"
+
+    # Create the appropriate reporter
+    if report_format == "json":
+        return JsonReporter()
+    elif report_format == "csv":
+        return CsvReporter()
+    elif report_format == "sarif":
+        return SarifReporter(ordered_rules=ordered_rules)
+    elif report_format == "junit":
+        return JunitReporter()
+    elif report_format == "template":
+        return TemplateReporter(template_path=report_template)
+    else:
+        fatal().critical(f"unknown report format: {report_format}")
+        sys.exit(1)
+
+
+def write_report(
+    ctx: GitleaksContext, findings: List[Finding], ordered_rules: Optional[List] = None
+) -> None:
+    """
+    Write findings to the configured report output.
+
+    Args:
+        ctx: Gitleaks context containing report configuration
+        findings: List of findings to report
+        ordered_rules: Optional list of Rule objects for SARIF reporter
+
+    Raises:
+        SystemExit: If writing the report fails
+    """
+    reporter = get_reporter(ctx, ordered_rules)
+    report_path = ctx.report_path
+
+    try:
+        if not report_path or report_path == "-":
+            # Write to stdout
+            reporter.write(sys.stdout, findings)
+        else:
+            # Write to file
+            with open(report_path, "w") as f:
+                reporter.write(f, findings)
+                info().info(f"report written to {report_path}")
+    except Exception as e:
+        fatal().critical(f"failed to write report: {e}")
+        sys.exit(1)

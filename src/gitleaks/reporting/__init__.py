@@ -3,10 +3,10 @@ Reporting and output formatting for gitleaks.
 
 This package contains reporter implementations for various formats:
 - JSON
-- CSV (future)
-- SARIF (future)
-- JUnit (future)
-- Custom templates (future)
+- CSV
+- SARIF
+- JUnit
+- Custom templates (Jinja2)
 
 The Reporter protocol defines the interface that all reporters must implement.
 """
@@ -20,6 +20,11 @@ from gitleaks.reporting.constants import (
     VERSION,
     DRIVER,
 )
+from gitleaks.reporting.json_reporter import JsonReporter
+from gitleaks.reporting.csv_reporter import CsvReporter
+from gitleaks.reporting.sarif_reporter import SarifReporter
+from gitleaks.reporting.junit_reporter import JunitReporter
+from gitleaks.reporting.template_reporter import TemplateReporter
 
 
 class Reporter(Protocol):
@@ -53,4 +58,9 @@ __all__ = [
     "STDOUT_REPORT_PATH",
     "VERSION",
     "DRIVER",
+    "JsonReporter",
+    "CsvReporter",
+    "SarifReporter",
+    "JunitReporter",
+    "TemplateReporter",
 ]
