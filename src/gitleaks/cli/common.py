@@ -167,8 +167,8 @@ def format_duration(duration: float) -> str:
 )
 @click.option(
     "--report-template",
-    type=click.Path(exists=True),
-    help="template file used to generate the report (implies --report-format=template)",
+    type=str,
+    help="template file or built-in template name (basic, leet, myspace, w98, wxp) used to generate the report (implies --report-format=template)",
 )
 @click.option(
     "--baseline-path",
