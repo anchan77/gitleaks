@@ -472,3 +472,81 @@ def write_report(report_path: str, reporter, findings: list) -> None:
     except Exception as e:
         fatal().critical(f"failed to write report: {e}")
         sys.exit(1)
+
+
+def setup_detector(ctx: GitleaksContext, detector, source: str) -> None:
+    """
+    Set up detector with baseline and gitleaksignore files.
+
+    This function configures baseline and gitleaksignore filtering based on
+    CLI flags and auto-discovery.
+
+    Args:
+        ctx: Gitleaks context object
+        detector: Detector instance to configure
+        source: Source path being scanned
+
+    Raises:
+        SystemExit: If baseline or gitleaksignore loading fails
+    """
+    # Set up baseline if specified
+    if ctx.baseline_path:
+        try:
+            detector.add_baseline(ctx.baseline_path, source)
+        except Exception as e:
+            fatal().critical(f"could not load baseline: {e}")
+            sys.exit(1)
+
+    # Set up gitleaksignore
+    # The gitleaks_ignore_path can be:
+    # 1. A direct path to a .gitleaksignore file
+    # 2. A directory containing a .gitleaksignore file
+    # 3. Default "." which looks for .gitleaksignore in source directory
+
+    gitleaks_ignore_path = ctx.gitleaks_ignore_path
+
+    # Try to load gitleaksignore files
+    loaded_any = False
+
+    # If a specific path was given (not default ".")
+    if gitleaks_ignore_path != ".":
+        if file_exists(gitleaks_ignore_path):
+            # It's a file, load it directly
+            try:
+                detector.add_gitleaks_ignore(gitleaks_ignore_path)
+                loaded_any = True
+            except Exception as e:
+                fatal().critical(f"could not load .gitleaksignore: {e}")
+                sys.exit(1)
+        elif os.path.isdir(gitleaks_ignore_path):
+            # It's a directory, look for .gitleaksignore inside
+            ignore_file = os.path.join(gitleaks_ignore_path, ".gitleaksignore")
+            if file_exists(ignore_file):
+                try:
+                    detector.add_gitleaks_ignore(ignore_file)
+                    loaded_any = True
+                except Exception as e:
+                    fatal().critical(f"could not load .gitleaksignore: {e}")
+                    sys.exit(1)
+        else:
+            fatal().critical(
+                f"gitleaks-ignore-path {gitleaks_ignore_path} does not exist"
+            )
+            sys.exit(1)
+
+    # Also try source directory if not already loaded from there
+    if os.path.isdir(source):
+        source_ignore = os.path.join(source, ".gitleaksignore")
+        if file_exists(source_ignore) and (
+            gitleaks_ignore_path == "." or
+            os.path.abspath(source_ignore) != os.path.abspath(
+                gitleaks_ignore_path if file_exists(gitleaks_ignore_path)
+                else os.path.join(gitleaks_ignore_path, ".gitleaksignore")
+            )
+        ):
+            try:
+                detector.add_gitleaks_ignore(source_ignore)
+                loaded_any = True
+            except Exception as e:
+                # Log but don't fail if source .gitleaksignore can't be loaded
+                warn().warn(f"could not load {source_ignore}: {e}")
