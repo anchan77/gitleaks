@@ -90,12 +90,11 @@ class File:
 
         This method reads the file in chunks and yields each chunk as a fragment.
         It handles:
+        - Archive detection and recursive scanning (if max_archive_depth > 0)
         - MIME type detection to skip binary files
         - Chunking at safe boundaries (avoiding splitting secrets)
         - Line number tracking
         - Symlink metadata preservation
-
-        Archive handling is deferred to Task 8.
 
         Args:
             yield_func: Callback to process each fragment
@@ -103,9 +102,54 @@ class File:
         Raises:
             Exception: If yield_func returns an error or reading fails
         """
-        # Task 8: Archive detection and handling will go here
-        # For now, treat everything as a regular file
+        from ..logging import get_logger
+        from .archive_source import detect_archive_type, scan_archive
 
+        logger = get_logger()
+
+        # Check if this file is an archive and we should scan it
+        if self.max_archive_depth > 0 and self.archive_depth < self.max_archive_depth:
+            # Peek at first bytes to help with archive detection
+            peek_bytes = self.content.peek(512) if hasattr(self.content, 'peek') else None
+
+            # Try to detect archive type
+            archive_type = detect_archive_type(self.path)
+
+            # If not detected by extension, try magic bytes
+            if not archive_type and peek_bytes:
+                from .archive_source import detect_archive_type_from_bytes
+                archive_type = detect_archive_type_from_bytes(peek_bytes)
+
+            if archive_type:
+                logger.debug(
+                    "detected archive",
+                    path=self.full_path(),
+                    type=archive_type,
+                    depth=self.archive_depth
+                )
+
+                # Scan as archive
+                try:
+                    await scan_archive(
+                        self.content,
+                        self.path,
+                        archive_type,
+                        self.config,
+                        self.outer_paths,
+                        self.max_archive_depth,
+                        self.archive_depth,
+                        yield_func
+                    )
+                    return
+                except Exception as e:
+                    logger.warning(
+                        "error scanning archive, treating as regular file",
+                        path=self.full_path(),
+                        error=str(e)
+                    )
+                    # Fall through to treat as regular file
+
+        # Not an archive or archive scanning disabled, treat as regular file
         await self._file_fragments(yield_func)
 
     async def _file_fragments(self, yield_func: FragmentsFunc) -> None:

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gitleaks Report - Windows XP Style</title>
+    <style>
+        body {
+          margin: 0;
+          padding: 20px;
+          font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif;
+          font-size: 12px;
+          background: linear-gradient(180deg, #5a8ebb 0%, #3d6fa7 50%, #2a5591 50%, #1e4578 100%);
+        }
+
+        .window {
+          background: #ece9d8;
+          border-radius: 8px 8px 0 0;
+          box-shadow: 0 0 20px rgba(0,0,0,0.5);
+          margin: 0 auto;
+          max-width: 900px;
+          overflow: hidden;
+        }
+
+        .title-bar {
+          background: linear-gradient(180deg, #3c8ddc 0%, #1e60a1 50%, #1953a0 50%, #1e60a1 100%);
+          color: white;
+          padding: 5px 8px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-radius: 8px 8px 0 0;
+        }
+
+        .title-bar-text {
+          font-weight: bold;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .title-bar-controls {
+          display: flex;
+          gap: 2px;
+        }
+
+        .title-bar-controls button {
+          width: 21px;
+          height: 21px;
+          padding: 0;
+          border: 1px solid #0831d9;
+          border-radius: 3px;
+          background: linear-gradient(180deg, #3c8ddc 0%, #1e60a1 100%);
+          color: white;
+          font-weight: bold;
+          font-size: 12px;
+        }
+
+        .title-bar-controls button:hover {
+          background: linear-gradient(180deg, #68b4ff 0%, #3c8ddc 100%);
+        }
+
+        .menu-bar {
+          background: linear-gradient(180deg, #fefefe 0%, #e4e0d7 100%);
+          border-bottom: 1px solid #b4ada2;
+          padding: 4px 5px;
+        }
+
+        .menu-item {
+          display: inline-block;
+          padding: 4px 10px;
+          border-radius: 2px;
+        }
+
+        .menu-item:hover {
+          background: #ffedce;
+          border: 1px solid #ffc550;
+          padding: 3px 9px;
+        }
+
+        .toolbar {
+          background: linear-gradient(180deg, #fefefe 0%, #e4e0d7 100%);
+          border-bottom: 1px solid #b4ada2;
+          padding: 6px 8px;
+          display: flex;
+          gap: 5px;
+        }
+
+        .tool-button {
+          background: linear-gradient(180deg, #fefefe 0%, #e4e0d7 100%);
+          border: 1px solid #b4ada2;
+          border-radius: 3px;
+          padding: 5px 12px;
+          font-size: 11px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .tool-button:hover {
+          background: linear-gradient(180deg, #fffef8 0%, #ffeeb8 100%);
+          border: 1px solid #ffc550;
+        }
+
+        .content {
+          background: white;
+          min-height: 400px;
+          padding: 15px;
+        }
+
+        .info-bar {
+          background: linear-gradient(180deg, #fefefe 0%, #e4e0d7 100%);
+          padding: 10px 15px;
+          border-bottom: 1px solid #b4ada2;
+          display: flex;
+          gap: 30px;
+        }
+
+        .info-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .info-label {
+          color: #666;
+        }
+
+        .info-value {
+          font-weight: bold;
+          color: #000080;
+        }
+
+        .finding-card {
+          border: 1px solid #c5d7ef;
+          border-radius: 5px;
+          margin: 10px 0;
+          padding: 12px;
+          background: linear-gradient(180deg, #ffffff 0%, #f5f5ff 100%);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .finding-header {
+          font-weight: bold;
+          color: #003399;
+          margin-bottom: 8px;
+          padding-bottom: 5px;
+          border-bottom: 1px solid #c5d7ef;
+        }
+
+        .finding-row {
+          padding: 4px 0;
+          display: flex;
+        }
+
+        .row-label {
+          width: 100px;
+          color: #666;
+          font-weight: bold;
+        }
+
+        .secret-highlight {
+          background: #fff9bf;
+          border: 1px solid #ffc550;
+          padding: 3px 8px;
+          border-radius: 3px;
+          font-family: 'Consolas', 'Courier New', monospace;
+          display: inline-block;
+        }
+
+        .tag-xp {
+          display: inline-block;
+          background: linear-gradient(180deg, #3c8ddc 0%, #1e60a1 100%);
+          color: white;
+          padding: 2px 10px;
+          margin: 2px;
+          border-radius: 12px;
+          font-size: 10px;
+          border: 1px solid #0831d9;
+        }
+
+        .status-bar {
+          background: linear-gradient(180deg, #fefefe 0%, #e4e0d7 100%);
+          border-top: 1px solid #b4ada2;
+          padding: 3px 8px;
+          display: flex;
+          justify-content: space-between;
+        }
+
+        .status-item {
+          padding: 2px 8px;
+          border-left: 1px solid #b4ada2;
+        }
+
+        .status-item:first-child {
+          border-left: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="window">
+        <div class="title-bar">
+            <div class="title-bar-text">
+                <span>🔒</span>
+                <span>Gitleaks Security Report</span>
+            </div>
+            <div class="title-bar-controls">
+                <button>_</button>
+                <button>□</button>
+                <button>×</button>
+            </div>
+        </div>
+
+        <div class="menu-bar">
+            <span class="menu-item">File</span>
+            <span class="menu-item">Edit</span>
+            <span class="menu-item">View</span>
+            <span class="menu-item">Tools</span>
+            <span class="menu-item">Help</span>
+        </div>
+
+        <div class="toolbar">
+            <button class="tool-button">⟲ Refresh</button>
+            <button class="tool-button">🔍 Search</button>
+            <button class="tool-button">📄 Export</button>
+        </div>
+
+        <div class="info-bar">
+            <div class="info-item">
+                <span class="info-label">Total Findings:</span>
+                <span class="info-value">{{ findings|length }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Files:</span>
+                <span class="info-value">{{ findings|map(attribute='file')|unique|list|length }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Rules:</span>
+                <span class="info-value">{{ findings|map(attribute='rule_id')|unique|list|length }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Scan Date:</span>
+                <span class="info-value">{{ now().strftime('%m/%d/%Y %I:%M %p') }}</span>
+            </div>
+        </div>
+
+        <div class="content">
+            {% if findings %}
+            <h3 style="color: #003399; margin-top: 0;">Security Findings</h3>
+            {% for finding in findings %}
+            <div class="finding-card">
+                <div class="finding-header">{{ finding.rule_id }}</div>
+                <div class="finding-row">
+                    <span class="row-label">Description:</span>
+                    <span>{{ finding.description }}</span>
+                </div>
+                <div class="finding-row">
+                    <span class="row-label">File:</span>
+                    <span>{{ finding.file }}</span>
+                </div>
+                <div class="finding-row">
+                    <span class="row-label">Line:</span>
+                    <span>{{ finding.start_line }}</span>
+                </div>
+                <div class="finding-row">
+                    <span class="row-label">Secret:</span>
+                    <span class="secret-highlight">{{ finding.secret }}</span>
+                </div>
+                {% if finding.commit %}
+                <div class="finding-row">
+                    <span class="row-label">Commit:</span>
+                    <span>{{ finding.commit[:7] }}</span>
+                </div>
+                {% endif %}
+                {% if finding.author %}
+                <div class="finding-row">
+                    <span class="row-label">Author:</span>
+                    <span>{{ finding.author }}</span>
+                </div>
+                {% endif %}
+                <div class="finding-row">
+                    <span class="row-label">Entropy:</span>
+                    <span>{{ "%.2f"|format(finding.entropy) }}</span>
+                </div>
+                {% if finding.tags %}
+                <div class="finding-row">
+                    <span class="row-label">Tags:</span>
+                    <div>
+                        {% for tag in finding.tags %}
+                        <span class="tag-xp">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="text-align: center; padding: 60px;">
+                <div style="font-size: 48px; color: #00aa00;">✓</div>
+                <h2 style="color: #003399; margin: 10px 0;">No Secrets Found</h2>
+                <p style="color: #666;">Your code appears to be secure!</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">Ready</div>
+            <div class="status-item">{{ findings|length }} finding(s)</div>
+            <div class="status-item">Gitleaks Report</div>
+        </div>
+    </div>
+</body>
+</html>

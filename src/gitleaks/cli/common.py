@@ -371,3 +371,103 @@ def file_exists(file_path: str) -> bool:
         return os.path.isfile(file_path)
     except Exception:
         return False
+
+
+def get_reporter(ctx: GitleaksContext, config):
+    """
+    Get the appropriate reporter based on CLI flags and file extension.
+
+    Args:
+        ctx: Gitleaks context object
+        config: Loaded configuration object
+
+    Returns:
+        Reporter instance or None if no report is requested
+
+    Raises:
+        SystemExit: If reporter configuration is invalid
+    """
+    from gitleaks.reporting.csv_reporter import CsvReporter
+    from gitleaks.reporting.json_reporter import JsonReporter
+    from gitleaks.reporting.junit_reporter import JunitReporter
+    from gitleaks.reporting.sarif_reporter import SarifReporter
+    from gitleaks.reporting.template_reporter import TemplateReporter
+
+    # If no report path is specified, no reporter is needed
+    if not ctx.report_path:
+        return None
+
+    report_format = ctx.report_format
+    report_template = ctx.report_template
+
+    # Infer format from file extension if not explicitly set
+    if not report_format:
+        report_path_lower = ctx.report_path.lower()
+        if report_path_lower.endswith(".csv"):
+            report_format = "csv"
+        elif report_path_lower.endswith(".json"):
+            report_format = "json"
+        elif report_path_lower.endswith(".sarif") or report_path_lower.endswith(".sarif.json"):
+            report_format = "sarif"
+        elif report_path_lower.endswith(".xml"):
+            report_format = "junit"
+        else:
+            # Default to JSON if no extension matches
+            report_format = "json"
+
+    # If report-template is specified, it implies template format
+    if report_template:
+        report_format = "template"
+
+    # Create the appropriate reporter
+    report_format = report_format.strip().lower()
+
+    if report_format == "csv":
+        return CsvReporter()
+    elif report_format == "json":
+        return JsonReporter()
+    elif report_format == "junit":
+        return JunitReporter()
+    elif report_format == "sarif":
+        # SARIF reporter needs ordered rules from config
+        ordered_rules = config.get_ordered_rules() if hasattr(config, "get_ordered_rules") else []
+        return SarifReporter(ordered_rules=ordered_rules)
+    elif report_format == "template":
+        try:
+            return TemplateReporter(template_path=report_template)
+        except Exception as e:
+            fatal().critical(f"invalid report template: {e}")
+            sys.exit(1)
+    else:
+        fatal().critical(
+            f"invalid report format: {report_format}. "
+            f"Valid formats: json, csv, sarif, junit, template"
+        )
+        sys.exit(1)
+
+
+def write_report(report_path: str, reporter, findings: list) -> None:
+    """
+    Write findings to a report file using the specified reporter.
+
+    Args:
+        report_path: Path to write the report to ("-" for stdout)
+        reporter: Reporter instance
+        findings: List of Finding objects
+
+    Raises:
+        SystemExit: If writing the report fails
+    """
+    try:
+        if report_path == "-":
+            # Write to stdout
+            reporter.write(sys.stdout, findings)
+            sys.stdout.flush()
+        else:
+            # Write to file
+            with open(report_path, "w") as f:
+                reporter.write(f, findings)
+            info().info(f"report written to {report_path}")
+    except Exception as e:
+        fatal().critical(f"failed to write report: {e}")
+        sys.exit(1)

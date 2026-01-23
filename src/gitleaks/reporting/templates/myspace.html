@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gitleaks Report - MySpace Style</title>
+    <style>
+        body {
+          margin: 0;
+          padding: 0;
+          font-family: Arial, Verdana, sans-serif;
+          background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f0f0f0"/><circle cx="50" cy="50" r="30" fill="%23e0e0e0"/></svg>');
+          background-color: #c0deed;
+        }
+
+        .page {
+          max-width: 900px;
+          margin: 20px auto;
+          background: white;
+          border: 3px solid #009cff;
+          box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .header {
+          background: linear-gradient(180deg, #009cff 0%, #0066cc 100%);
+          color: white;
+          padding: 20px;
+          text-align: center;
+          border-bottom: 3px solid #0066cc;
+        }
+
+        .header h1 {
+          font-size: 28px;
+          margin: 0;
+          text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .profile-info {
+          background: #f5f5f5;
+          padding: 15px;
+          border-bottom: 2px solid #ccc;
+        }
+
+        .stats-bar {
+          display: flex;
+          justify-content: space-around;
+          background: #fff;
+          padding: 10px;
+          border-bottom: 2px solid #ccc;
+        }
+
+        .stat {
+          text-align: center;
+        }
+
+        .stat-number {
+          font-size: 24px;
+          font-weight: bold;
+          color: #009cff;
+        }
+
+        .stat-label {
+          font-size: 12px;
+          color: #666;
+        }
+
+        .content {
+          padding: 20px;
+        }
+
+        .finding-box {
+          background: #f9f9f9;
+          border: 2px solid #009cff;
+          border-radius: 5px;
+          margin-bottom: 15px;
+          padding: 15px;
+        }
+
+        .finding-header {
+          background: #009cff;
+          color: white;
+          padding: 8px 12px;
+          margin: -15px -15px 10px -15px;
+          border-radius: 3px 3px 0 0;
+          font-weight: bold;
+        }
+
+        .finding-details {
+          margin: 10px 0;
+        }
+
+        .detail-row {
+          padding: 5px 0;
+          border-bottom: 1px dotted #ccc;
+        }
+
+        .label {
+          font-weight: bold;
+          color: #333;
+        }
+
+        .secret-highlight {
+          background: #ffff00;
+          padding: 2px 5px;
+          border: 1px solid #ff6600;
+          font-family: monospace;
+        }
+
+        .tag {
+          display: inline-block;
+          background: #009cff;
+          color: white;
+          padding: 2px 8px;
+          margin: 2px;
+          border-radius: 10px;
+          font-size: 11px;
+        }
+
+        .footer {
+          background: #009cff;
+          color: white;
+          text-align: center;
+          padding: 15px;
+          border-top: 3px solid #0066cc;
+        }
+
+        .blink {
+          animation: blink 1s linear infinite;
+        }
+
+        @keyframes blink {
+          0%, 50% { opacity: 1; }
+          51%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <h1>🔒 Gitleaks Security Report 🔒</h1>
+            <div style="font-size: 14px; margin-top: 5px;">
+                Generated: {{ now().strftime('%B %d, %Y at %I:%M %p UTC') }}
+            </div>
+        </div>
+
+        <div class="profile-info">
+            <strong>About This Scan:</strong> Security analysis for potential leaked secrets
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat">
+                <div class="stat-number">{{ findings|length }}</div>
+                <div class="stat-label">Total Findings</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">{{ findings|map(attribute='file')|unique|list|length }}</div>
+                <div class="stat-label">Files Affected</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">{{ findings|map(attribute='rule_id')|unique|list|length }}</div>
+                <div class="stat-label">Rules Triggered</div>
+            </div>
+        </div>
+
+        <div class="content">
+            {% if findings %}
+            <h2 style="color: #009cff;">Security Findings</h2>
+            {% for finding in findings %}
+            <div class="finding-box">
+                <div class="finding-header">
+                    {{ finding.rule_id }}
+                </div>
+                <div class="finding-details">
+                    <div class="detail-row">
+                        <span class="label">File:</span> {{ finding.file }}
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Line:</span> {{ finding.start_line }}
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Description:</span> {{ finding.description }}
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Secret:</span> <span class="secret-highlight">{{ finding.secret }}</span>
+                    </div>
+                    {% if finding.tags %}
+                    <div class="detail-row">
+                        <span class="label">Tags:</span>
+                        {% for tag in finding.tags %}
+                        <span class="tag">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if finding.commit %}
+                    <div class="detail-row">
+                        <span class="label">Commit:</span> {{ finding.commit[:7] }}
+                        {% if finding.author %}
+                        by {{ finding.author }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="detail-row">
+                        <span class="label">Entropy:</span> {{ "%.2f"|format(finding.entropy) }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="text-align: center; padding: 50px;">
+                <h2 style="color: #00cc00;">✓ No Secrets Found!</h2>
+                <p>Your code appears to be secure.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            Powered by <span class="blink">★</span> Gitleaks <span class="blink">★</span>
+        </div>
+    </div>
+</body>
+</html>
