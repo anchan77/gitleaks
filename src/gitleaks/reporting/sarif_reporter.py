@@ -284,7 +284,7 @@ class SarifReporter:
         for rule in self.ordered_rules:
             rules.append(
                 Rule(
-                    id=rule.rule_id,
+                    id=rule.id,
                     short_description=ShortDescription(text=rule.description),
                 )
             )

@@ -9,7 +9,7 @@ import asyncio
 import os
 import sys
 import time
-from typing import Optional
+from typing import List, Optional
 
 import click
 
@@ -19,10 +19,15 @@ from gitleaks.cli.common import (
     cli,
     file_exists,
     format_duration,
+    get_reporter,
     init_config,
     pass_context,
+    write_report,
 )
+from gitleaks.detector.engine import Detector
 from gitleaks.logging import debug, error, fatal, info, warn
+from gitleaks.reporting.finding import Finding
+from gitleaks.sources.dir_source import Files
 
 
 async def dir_scan_async(
@@ -31,8 +36,13 @@ async def dir_scan_async(
     """
     Async handler for directory scanning.
 
-    This function will eventually coordinate async file I/O and scanning.
-    For now, it's a tracer bullet proving the async integration works.
+    This function coordinates the end-to-end detection pipeline:
+    - Load configuration
+    - Instantiate detector
+    - Create directory source
+    - Run detection
+    - Report findings
+    - Exit with appropriate code
 
     Args:
         ctx: Gitleaks context object
@@ -48,27 +58,88 @@ async def dir_scan_async(
     debug().debug(f"max target megabytes: {ctx.max_target_megabytes}")
     debug().debug(f"max archive depth: {ctx.max_archive_depth}")
 
-    # TODO: The actual detection logic will be implemented in Task 5 (Basic Detection Engine)
-    # For now, we just validate the setup and exit cleanly
-
     info().info(
         f"configuration loaded successfully from {config.path if hasattr(config, 'path') else 'default config'}"
     )
     info().info(f"loaded {len(config.rules)} rule(s)")
 
-    # Placeholder message
-    info().info("directory scanning command initialized successfully")
-    info().info("detection engine will be implemented in Task 5")
+    # Instantiate detector with configuration
+    detector = Detector(config)
 
-    # Simulate async work (this will be replaced with actual async scanning in Task 5)
-    await asyncio.sleep(0)
+    # Configure detector flags from context
+    detector.verbose = ctx.verbose
+    detector.redact = ctx.redact
+    detector.max_target_megabytes = ctx.max_target_megabytes
+    detector.follow_symlinks = follow_symlinks
+    detector.no_color = ctx.no_color
+    detector.ignore_gitleaks_allow = ctx.ignore_gitleaks_allow
+    detector.max_archive_depth = ctx.max_archive_depth
+
+    # Set concurrency semaphore (use default of 40 for now)
+    # This controls how many fragments are processed concurrently
+
+    # Create directory source
+    max_file_size = 0
+    if ctx.max_target_megabytes > 0:
+        max_file_size = ctx.max_target_megabytes * 1_000_000  # Convert MB to bytes
+
+    files_source = Files(
+        path=source,
+        config=config,
+        follow_symlinks=follow_symlinks,
+        max_file_size=max_file_size,
+        max_archive_depth=ctx.max_archive_depth,
+        max_concurrency=10,  # Reasonable default for file I/O concurrency
+    )
+
+    # Run detection
+    debug().debug("starting detection")
+    start_time = time.time()
+
+    try:
+        findings: List[Finding] = await detector.detect_source(files_source)
+        scan_error = None
+    except Exception as e:
+        error().error(f"scan error: {e}")
+        findings = []
+        scan_error = e
 
     # Calculate scan duration
-    duration = time.time() - ctx.start_time
+    duration = time.time() - start_time
 
-    # Exit cleanly
-    info().info(f"scan completed in {format_duration(duration)}")
-    info().info("no leaks found")
+    # Display summary
+    total_bytes = detector._total_bytes
+    bytes_msg = f"scanned ~{total_bytes} bytes ({bytes_convert(total_bytes)})"
+
+    if scan_error is None:
+        info().info(f"{bytes_msg} in {format_duration(duration)}")
+        if len(findings) > 0:
+            warn().warn(f"leaks found: {len(findings)}")
+        else:
+            info().info("no leaks found")
+    else:
+        warn().warn(bytes_msg)
+        warn().warn(f"partial scan completed in {format_duration(duration)}")
+        if len(findings) > 0:
+            warn().warn(f"{len(findings)} leaks found in partial scan")
+        else:
+            warn().warn("no leaks found in partial scan")
+
+    # Write report if requested
+    if ctx.report_path:
+        reporter = get_reporter(ctx, config)
+        if reporter:
+            write_report(ctx.report_path, reporter, findings)
+
+    # Exit with appropriate code
+    if scan_error:
+        sys.exit(1)
+
+    if len(findings) > 0:
+        sys.exit(ctx.exit_code)
+
+    # No findings, clean exit
+    sys.exit(0)
 
 
 @cli.command(name="dir")
