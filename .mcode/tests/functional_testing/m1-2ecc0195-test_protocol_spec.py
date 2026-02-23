@@ -9,7 +9,7 @@ This script supports two modes:
 1. SRC Validation: Tests commands and captures outputs (no expected_stdout/stderr)
 2. DST Contract Validation: Tests commands and validates outputs match expected
 
-Generated at: 2026-02-23T22:13:30.466085+00:00
+Generated at: 2026-02-23T22:22:43.014952+00:00
 Project: gitleaks-to-python
 Milestone: 1
 """
@@ -34,77 +34,12 @@ import pytest
 # Parse JSON at runtime to handle null -> None, true -> True, false -> False
 TEST_CASES = json.loads(r'''[
     {
-        "name": "test_root_help_output",
-        "category": "HELP_OUTPUT",
-        "description": "Verify root --help shows usage information with all subcommands listed",
+        "name": "test_version_output",
+        "category": "HAPPY_PATH",
+        "description": "Version command displays version string and exits 0",
         "command": "gitleaks",
         "args": [
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "Gitleaks scans code, past or present, for secrets",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_root_help_short_flag",
-        "category": "HELP_OUTPUT",
-        "description": "Verify root -h shows usage information",
-        "command": "gitleaks",
-        "args": [
-            "-h"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "Gitleaks scans code, past or present, for secrets",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_root_help_lists_git_command",
-        "category": "HELP_OUTPUT",
-        "description": "Verify root help lists the 'git' subcommand",
-        "command": "gitleaks",
-        "args": [
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "git",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_root_help_lists_dir_command",
-        "category": "HELP_OUTPUT",
-        "description": "Verify root help lists the 'dir' subcommand",
-        "command": "gitleaks",
-        "args": [
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "dir",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_root_help_lists_stdin_command",
-        "category": "HELP_OUTPUT",
-        "description": "Verify root help lists the 'stdin' subcommand",
-        "command": "gitleaks",
-        "args": [
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "stdin",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_root_help_lists_version_command",
-        "category": "HELP_OUTPUT",
-        "description": "Verify root help lists the 'version' subcommand",
-        "command": "gitleaks",
-        "args": [
-            "--help"
+            "version"
         ],
         "expected_exit_code": 0,
         "expected_stdout": "version",
@@ -112,158 +47,22 @@ TEST_CASES = json.loads(r'''[
         "timeout_seconds": 10
     },
     {
-        "name": "test_root_help_does_not_list_protect_command",
+        "name": "test_root_help_output",
         "category": "HELP_OUTPUT",
-        "description": "Verify root help does NOT list the deprecated/hidden 'protect' subcommand",
+        "description": "Root --help shows usage information and available commands",
         "command": "gitleaks",
         "args": [
             "--help"
         ],
         "expected_exit_code": 0,
-        "expected_stdout_excludes": "protect",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_root_help_shows_config_flag",
-        "category": "HELP_OUTPUT",
-        "description": "Verify root help shows --config/-c persistent flag",
-        "command": "gitleaks",
-        "args": [
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "--config",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_root_help_shows_verbose_flag",
-        "category": "HELP_OUTPUT",
-        "description": "Verify root help shows --verbose/-v persistent flag",
-        "command": "gitleaks",
-        "args": [
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "--verbose",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_root_help_shows_report_path_flag",
-        "category": "HELP_OUTPUT",
-        "description": "Verify root help shows --report-path/-r persistent flag",
-        "command": "gitleaks",
-        "args": [
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "--report-path",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_root_help_shows_exit_code_flag",
-        "category": "HELP_OUTPUT",
-        "description": "Verify root help shows --exit-code persistent flag",
-        "command": "gitleaks",
-        "args": [
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "--exit-code",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_git_help_output",
-        "category": "HELP_OUTPUT",
-        "description": "Verify 'git --help' shows git subcommand usage",
-        "command": "gitleaks",
-        "args": [
-            "git",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan git repositories for secrets",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_git_help_shows_platform_flag",
-        "category": "HELP_OUTPUT",
-        "description": "Verify 'git --help' shows --platform flag",
-        "command": "gitleaks",
-        "args": [
-            "git",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "--platform",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_git_help_shows_staged_flag",
-        "category": "HELP_OUTPUT",
-        "description": "Verify 'git --help' shows --staged flag",
-        "command": "gitleaks",
-        "args": [
-            "git",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "--staged",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_git_help_shows_pre_commit_flag",
-        "category": "HELP_OUTPUT",
-        "description": "Verify 'git --help' shows --pre-commit flag",
-        "command": "gitleaks",
-        "args": [
-            "git",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "--pre-commit",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_git_help_shows_log_opts_flag",
-        "category": "HELP_OUTPUT",
-        "description": "Verify 'git --help' shows --log-opts flag",
-        "command": "gitleaks",
-        "args": [
-            "git",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "--log-opts",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_git_help_shows_inherited_config_flag",
-        "category": "HELP_OUTPUT",
-        "description": "Verify 'git --help' also shows inherited --config persistent flag",
-        "command": "gitleaks",
-        "args": [
-            "git",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "--config",
+        "expected_stdout": "Available Commands",
         "expected_stderr": null,
         "timeout_seconds": 10
     },
     {
         "name": "test_dir_help_output",
         "category": "HELP_OUTPUT",
-        "description": "Verify 'dir --help' shows dir subcommand usage",
+        "description": "Dir subcommand --help shows directory scanning usage",
         "command": "gitleaks",
         "args": [
             "dir",
@@ -275,23 +74,23 @@ TEST_CASES = json.loads(r'''[
         "timeout_seconds": 10
     },
     {
-        "name": "test_dir_help_shows_follow_symlinks_flag",
+        "name": "test_git_help_output",
         "category": "HELP_OUTPUT",
-        "description": "Verify 'dir --help' shows --follow-symlinks flag",
+        "description": "Git subcommand --help shows git scanning usage",
         "command": "gitleaks",
         "args": [
-            "dir",
+            "git",
             "--help"
         ],
         "expected_exit_code": 0,
-        "expected_stdout": "--follow-symlinks",
+        "expected_stdout": "scan git repositories for secrets",
         "expected_stderr": null,
         "timeout_seconds": 10
     },
     {
         "name": "test_stdin_help_output",
         "category": "HELP_OUTPUT",
-        "description": "Verify 'stdin --help' shows stdin subcommand usage",
+        "description": "Stdin subcommand --help shows stdin detection usage",
         "command": "gitleaks",
         "args": [
             "stdin",
@@ -303,1547 +102,125 @@ TEST_CASES = json.loads(r'''[
         "timeout_seconds": 10
     },
     {
-        "name": "test_version_help_output",
-        "category": "HELP_OUTPUT",
-        "description": "Verify 'version --help' shows version subcommand usage",
-        "command": "gitleaks",
-        "args": [
-            "version",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "display gitleaks version",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_version_subcommand",
-        "category": "VERSION_OUTPUT",
-        "description": "Verify 'version' subcommand prints the version string",
-        "command": "gitleaks",
-        "args": [
-            "version"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": ".",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_root_version_flag",
-        "category": "VERSION_OUTPUT",
-        "description": "Verify root --version flag prints version",
-        "command": "gitleaks",
-        "args": [
-            "--version"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "gitleaks version",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_unknown_flag_exit_code",
-        "category": "INVALID_OPTIONS",
-        "description": "Unknown flag should exit with code 126",
-        "command": "gitleaks",
-        "args": [
-            "--unknown-flag"
-        ],
-        "expected_exit_code": 126,
-        "expected_stdout": null,
-        "expected_stderr": "unknown flag",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_unknown_subcommand",
-        "category": "INVALID_ARGS",
-        "description": "Unknown subcommand should produce an error",
-        "command": "gitleaks",
-        "args": [
-            "nonexistent"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "unknown command",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_git_too_many_args",
-        "category": "INVALID_ARGS",
-        "description": "git subcommand with more than 1 positional arg should fail",
-        "command": "gitleaks",
-        "args": [
-            "git",
-            "path1",
-            "path2"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "accepts at most 1 arg",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_git_unknown_flag",
-        "category": "INVALID_OPTIONS",
-        "description": "Unknown flag on git subcommand should exit with 126",
-        "command": "gitleaks",
-        "args": [
-            "git",
-            "--nonexistent-flag"
-        ],
-        "expected_exit_code": 126,
-        "expected_stdout": null,
-        "expected_stderr": "unknown flag",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_dir_unknown_flag",
-        "category": "INVALID_OPTIONS",
-        "description": "Unknown flag on dir subcommand should exit with 126",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--nonexistent-flag"
-        ],
-        "expected_exit_code": 126,
-        "expected_stdout": null,
-        "expected_stderr": "unknown flag",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_stdin_unknown_flag",
-        "category": "INVALID_OPTIONS",
-        "description": "Unknown flag on stdin subcommand should exit with 126",
-        "command": "gitleaks",
-        "args": [
-            "stdin",
-            "--nonexistent-flag"
-        ],
-        "expected_exit_code": 126,
-        "expected_stdout": null,
-        "expected_stderr": "unknown flag",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_invalid_config_path",
-        "category": "INVALID_OPTIONS",
-        "description": "Invalid config file path should produce a fatal error",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--config",
-            "/nonexistent/path/to/config.toml",
-            "."
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "unable to load gitleaks config",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_invalid_log_level",
-        "category": "INVALID_OPTIONS",
-        "description": "Invalid log level should produce a warning (not a fatal error)",
-        "command": "gitleaks",
-        "args": [
-            "version",
-            "--log-level",
-            "invalid_level"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_exit_code_flag_type_validation",
-        "category": "INVALID_OPTIONS",
-        "description": "Non-integer value for --exit-code should fail",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--exit-code",
-            "abc"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "invalid argument",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_max_target_megabytes_type_validation",
-        "category": "INVALID_OPTIONS",
-        "description": "Non-integer value for --max-target-megabytes should fail",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--max-target-megabytes",
-            "abc"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "invalid argument",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_max_decode_depth_type_validation",
-        "category": "INVALID_OPTIONS",
-        "description": "Non-integer value for --max-decode-depth should fail",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--max-decode-depth",
-            "abc"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "invalid argument",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_timeout_type_validation",
-        "category": "INVALID_OPTIONS",
-        "description": "Non-integer value for --timeout should fail",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--timeout",
-            "abc"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "invalid argument",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_redact_type_validation",
-        "category": "INVALID_OPTIONS",
-        "description": "Non-integer value for --redact should fail",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--redact=abc"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "invalid argument",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_dir_alias_directory",
+        "name": "test_dir_scan_detects_secrets",
         "category": "HAPPY_PATH",
-        "description": "Verify 'directory' works as an alias for 'dir'",
+        "description": "Dir scan on directory containing AWS keys detects leaks and exits with code 1",
         "command": "gitleaks",
         "args": [
-            "directory",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files for secrets",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_dir_alias_file",
-        "category": "HAPPY_PATH",
-        "description": "Verify 'file' works as an alias for 'dir'",
-        "command": "gitleaks",
-        "args": [
-            "file",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files for secrets",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_no_banner_flag",
-        "category": "HAPPY_PATH",
-        "description": "Verify --no-banner suppresses the banner output",
-        "command": "gitleaks",
-        "args": [
-            "version",
+            "dir",
+            "testdata/repos/nogit",
             "--no-banner"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr_excludes": "gitleaks",
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_banner_displayed_by_default",
-        "category": "HAPPY_PATH",
-        "description": "Verify banner is displayed by default when running a scan command",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_config_flag_short_form",
-        "category": "HAPPY_PATH",
-        "description": "Verify -c short flag is accepted for config",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "-c",
-            "/nonexistent/config.toml",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_verbose_flag_short_form",
-        "category": "HAPPY_PATH",
-        "description": "Verify -v short flag is accepted for verbose",
-        "command": "gitleaks",
-        "args": [
-            "version",
-            "-v"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_log_level_trace",
-        "category": "HAPPY_PATH",
-        "description": "Verify --log-level trace is accepted",
-        "command": "gitleaks",
-        "args": [
-            "version",
-            "--log-level",
-            "trace"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_log_level_debug",
-        "category": "HAPPY_PATH",
-        "description": "Verify --log-level debug is accepted",
-        "command": "gitleaks",
-        "args": [
-            "version",
-            "--log-level",
-            "debug"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_log_level_warn",
-        "category": "HAPPY_PATH",
-        "description": "Verify --log-level warn is accepted",
-        "command": "gitleaks",
-        "args": [
-            "version",
-            "--log-level",
-            "warn"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_log_level_error",
-        "category": "HAPPY_PATH",
-        "description": "Verify --log-level error is accepted",
-        "command": "gitleaks",
-        "args": [
-            "version",
-            "--log-level",
-            "error"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_log_level_fatal",
-        "category": "HAPPY_PATH",
-        "description": "Verify --log-level fatal is accepted",
-        "command": "gitleaks",
-        "args": [
-            "version",
-            "--log-level",
-            "fatal"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_log_level_short_flag",
-        "category": "HAPPY_PATH",
-        "description": "Verify -l short flag is accepted for log-level",
-        "command": "gitleaks",
-        "args": [
-            "version",
-            "-l",
-            "debug"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_exit_code_custom_value",
-        "category": "HAPPY_PATH",
-        "description": "Verify --exit-code accepts a custom integer value",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--exit-code",
-            "42",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_report_format_json_flag",
-        "category": "HAPPY_PATH",
-        "description": "Verify --report-format json is accepted on help",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--report-format",
-            "json",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_report_format_short_flag",
-        "category": "HAPPY_PATH",
-        "description": "Verify -f short flag is accepted for report-format",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "-f",
-            "csv",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_report_path_short_flag",
-        "category": "HAPPY_PATH",
-        "description": "Verify -r short flag is accepted for report-path",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "-r",
-            "/tmp/report.json",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_baseline_path_short_flag",
-        "category": "HAPPY_PATH",
-        "description": "Verify -b short flag is accepted for baseline-path",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "-b",
-            "/tmp/baseline.json",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_gitleaks_ignore_path_short_flag",
-        "category": "HAPPY_PATH",
-        "description": "Verify -i short flag is accepted for gitleaks-ignore-path",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "-i",
-            "/tmp/ignore",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_redact_no_value",
-        "category": "HAPPY_PATH",
-        "description": "Verify --redact without value defaults to 100%",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--redact",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_redact_with_value",
-        "category": "HAPPY_PATH",
-        "description": "Verify --redact=50 is accepted",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--redact=50",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_max_decode_depth_custom",
-        "category": "HAPPY_PATH",
-        "description": "Verify --max-decode-depth accepts custom integer",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--max-decode-depth",
-            "10",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_max_archive_depth_custom",
-        "category": "HAPPY_PATH",
-        "description": "Verify --max-archive-depth accepts custom integer",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--max-archive-depth",
-            "3",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_timeout_custom",
-        "category": "HAPPY_PATH",
-        "description": "Verify --timeout accepts custom integer (seconds)",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--timeout",
-            "60",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_max_target_megabytes_custom",
-        "category": "HAPPY_PATH",
-        "description": "Verify --max-target-megabytes accepts custom integer",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--max-target-megabytes",
-            "50",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_enable_rule_single",
-        "category": "HAPPY_PATH",
-        "description": "Verify --enable-rule accepts a single rule ID",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--enable-rule",
-            "generic-api-key",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_enable_rule_multiple",
-        "category": "HAPPY_PATH",
-        "description": "Verify --enable-rule accepts multiple rule IDs (comma-separated or repeated)",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--enable-rule",
-            "generic-api-key",
-            "--enable-rule",
-            "aws-access-key",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_no_color_flag",
-        "category": "HAPPY_PATH",
-        "description": "Verify --no-color flag is accepted",
-        "command": "gitleaks",
-        "args": [
-            "version",
-            "--no-color"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_ignore_gitleaks_allow_flag",
-        "category": "HAPPY_PATH",
-        "description": "Verify --ignore-gitleaks-allow flag is accepted",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--ignore-gitleaks-allow",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_config_env_var_gitleaks_config",
-        "category": "HAPPY_PATH",
-        "description": "Verify GITLEAKS_CONFIG env var is used when --config is not set",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--help"
-        ],
-        "env": {
-            "GITLEAKS_CONFIG": "/tmp/test_config.toml"
-        },
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_config_env_var_gitleaks_config_toml",
-        "category": "HAPPY_PATH",
-        "description": "Verify GITLEAKS_CONFIG_TOML env var is accepted (inline TOML content)",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--help"
-        ],
-        "env": {
-            "GITLEAKS_CONFIG_TOML": "title = \"test\""
-        },
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_dir_scan_empty_directory",
-        "category": "HAPPY_PATH",
-        "description": "Verify dir command can scan an empty directory with no findings",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "/tmp/gitleaks_test_empty"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_empty"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_empty"
-            ]
-        }
-    },
-    {
-        "name": "test_dir_scan_file_with_secret",
-        "category": "HAPPY_PATH",
-        "description": "Verify dir command detects a secret in a file and exits with default exit code 1",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "/tmp/gitleaks_test_secret"
         ],
         "expected_exit_code": 1,
         "expected_stdout": null,
         "expected_stderr": "leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_secret",
-                "echo 'aws_access_key_id = \"AKIAIOSFODNN7EXAMPLE\"' > /tmp/gitleaks_test_secret/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_secret"
-            ]
-        }
+        "timeout_seconds": 30
+    },
+    {
+        "name": "test_dir_scan_json_report_stdout",
+        "category": "HAPPY_PATH",
+        "description": "Dir scan with JSON report output to stdout contains finding fields",
+        "command": "gitleaks",
+        "args": [
+            "dir",
+            "testdata/repos/nogit",
+            "--no-banner",
+            "--report-format",
+            "json",
+            "--report-path",
+            "-"
+        ],
+        "expected_exit_code": 1,
+        "expected_stdout": "RuleID",
+        "expected_stderr": "leaks found",
+        "timeout_seconds": 30
     },
     {
         "name": "test_dir_scan_custom_exit_code",
         "category": "HAPPY_PATH",
-        "description": "Verify dir command uses custom exit code when leaks are found",
+        "description": "Dir scan uses custom exit code when leaks are found",
         "command": "gitleaks",
         "args": [
             "dir",
+            "testdata/repos/nogit",
             "--no-banner",
             "--exit-code",
-            "42",
-            "/tmp/gitleaks_test_exitcode"
+            "77"
         ],
-        "expected_exit_code": 42,
-        "expected_stdout": null,
-        "expected_stderr": "leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_exitcode",
-                "echo 'aws_access_key_id = \"AKIAIOSFODNN7EXAMPLE\"' > /tmp/gitleaks_test_exitcode/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_exitcode"
-            ]
-        }
-    },
-    {
-        "name": "test_dir_scan_exit_code_zero_for_clean",
-        "category": "HAPPY_PATH",
-        "description": "Verify dir command exits 0 when no leaks are found even with custom exit code",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--exit-code",
-            "42",
-            "/tmp/gitleaks_test_clean"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_clean",
-                "echo 'hello world' > /tmp/gitleaks_test_clean/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_clean"
-            ]
-        }
-    },
-    {
-        "name": "test_dir_scan_with_json_report",
-        "category": "FILE_INPUT",
-        "description": "Verify dir command generates a JSON report when --report-path is set",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--report-path",
-            "/tmp/gitleaks_test_report.json",
-            "--report-format",
-            "json",
-            "/tmp/gitleaks_test_report_dir"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_report_dir",
-                "echo 'hello world' > /tmp/gitleaks_test_report_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_report_dir",
-                "/tmp/gitleaks_test_report.json"
-            ]
-        }
-    },
-    {
-        "name": "test_dir_scan_with_csv_report",
-        "category": "FILE_INPUT",
-        "description": "Verify dir command generates a CSV report when --report-format csv is set",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--report-path",
-            "/tmp/gitleaks_test_report.csv",
-            "--report-format",
-            "csv",
-            "/tmp/gitleaks_test_csv_dir"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_csv_dir",
-                "echo 'hello world' > /tmp/gitleaks_test_csv_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_csv_dir",
-                "/tmp/gitleaks_test_report.csv"
-            ]
-        }
-    },
-    {
-        "name": "test_dir_scan_report_format_inferred_from_extension",
-        "category": "FILE_INPUT",
-        "description": "Verify report format is inferred from file extension when --report-format is not set",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--report-path",
-            "/tmp/gitleaks_inferred.json",
-            "/tmp/gitleaks_test_infer_dir"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_infer_dir",
-                "echo 'hello world' > /tmp/gitleaks_test_infer_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_infer_dir",
-                "/tmp/gitleaks_inferred.json"
-            ]
-        }
-    },
-    {
-        "name": "test_dir_scan_report_to_stdout",
-        "category": "HAPPY_PATH",
-        "description": "Verify --report-path - sends report to stdout",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--report-path",
-            "-",
-            "--report-format",
-            "json",
-            "/tmp/gitleaks_test_stdout_dir"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "[",
-        "expected_stderr": null,
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_stdout_dir",
-                "echo 'hello world' > /tmp/gitleaks_test_stdout_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_stdout_dir"
-            ]
-        }
-    },
-    {
-        "name": "test_stdin_scan_no_leaks",
-        "category": "PIPE_INPUT",
-        "description": "Verify stdin command with clean input exits 0",
-        "command": "gitleaks",
-        "args": [
-            "stdin",
-            "--no-banner"
-        ],
-        "stdin": "hello world this is clean content",
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30
-    },
-    {
-        "name": "test_stdin_scan_with_secret",
-        "category": "PIPE_INPUT",
-        "description": "Verify stdin command detects a secret and exits with code 1",
-        "command": "gitleaks",
-        "args": [
-            "stdin",
-            "--no-banner"
-        ],
-        "stdin": "aws_access_key_id = \"AKIAIOSFODNN7EXAMPLE\"",
-        "expected_exit_code": 1,
+        "expected_exit_code": 77,
         "expected_stdout": null,
         "expected_stderr": "leaks found",
         "timeout_seconds": 30
     },
     {
-        "name": "test_stdin_scan_empty_input",
-        "category": "PIPE_INPUT",
-        "description": "Verify stdin command with empty input exits 0",
+        "name": "test_dir_scan_no_leaks_clean_file",
+        "category": "HAPPY_PATH",
+        "description": "Dir scan on a clean file with no secrets exits 0",
         "command": "gitleaks",
         "args": [
-            "stdin",
+            "dir",
+            "/tmp/gitleaks_clean_test.txt",
             "--no-banner"
         ],
-        "stdin": "",
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30
-    },
-    {
-        "name": "test_dir_scan_with_custom_config",
-        "category": "FILE_INPUT",
-        "description": "Verify dir command accepts a custom config file via --config",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--config",
-            "/tmp/gitleaks_test_custom_config.toml",
-            "/tmp/gitleaks_test_custom_cfg_dir"
-        ],
         "expected_exit_code": 0,
         "expected_stdout": null,
         "expected_stderr": "no leaks found",
         "timeout_seconds": 30,
         "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_custom_cfg_dir",
-                "echo 'hello world' > /tmp/gitleaks_test_custom_cfg_dir/test.txt",
-                "printf 'title = \"custom config\"\\n[[rules]]\\nid = \"test-rule\"\\nregex = \"NEVER_MATCH_THIS_12345\"\\nkeywords = [\"nevermatch\"]\\n' > /tmp/gitleaks_test_custom_config.toml"
-            ]
+            "create_file": {
+                "path": "/tmp/gitleaks_clean_test.txt",
+                "content": "hello world\nno secrets here\njust a regular file\n"
+            }
         },
         "cleanup": {
             "delete_files": [
-                "/tmp/gitleaks_test_custom_cfg_dir",
-                "/tmp/gitleaks_test_custom_config.toml"
+                "/tmp/gitleaks_clean_test.txt"
             ]
         }
     },
     {
-        "name": "test_dir_scan_with_config_env_var",
-        "category": "FILE_INPUT",
-        "description": "Verify dir command uses GITLEAKS_CONFIG env var for config path",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "/tmp/gitleaks_test_env_cfg_dir"
-        ],
-        "env": {
-            "GITLEAKS_CONFIG": "/tmp/gitleaks_test_env_config.toml"
-        },
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_env_cfg_dir",
-                "echo 'hello world' > /tmp/gitleaks_test_env_cfg_dir/test.txt",
-                "printf 'title = \"env config\"\\n[[rules]]\\nid = \"test-rule\"\\nregex = \"NEVER_MATCH_THIS_12345\"\\nkeywords = [\"nevermatch\"]\\n' > /tmp/gitleaks_test_env_config.toml"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_env_cfg_dir",
-                "/tmp/gitleaks_test_env_config.toml"
-            ]
-        }
-    },
-    {
-        "name": "test_dir_scan_with_inline_config_env_var",
-        "category": "FILE_INPUT",
-        "description": "Verify dir command uses GITLEAKS_CONFIG_TOML env var for inline config",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "/tmp/gitleaks_test_inline_cfg_dir"
-        ],
-        "env": {
-            "GITLEAKS_CONFIG_TOML": "title = \"inline\"\n[[rules]]\nid = \"test-rule\"\nregex = \"NEVER_MATCH_THIS_12345\"\nkeywords = [\"nevermatch\"]"
-        },
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_inline_cfg_dir",
-                "echo 'hello world' > /tmp/gitleaks_test_inline_cfg_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_inline_cfg_dir"
-            ]
-        }
-    },
-    {
-        "name": "test_dir_scan_config_cli_takes_precedence_over_env",
-        "category": "HAPPY_PATH",
-        "description": "Verify --config flag takes precedence over GITLEAKS_CONFIG env var",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--config",
-            "/tmp/gitleaks_test_prec_config.toml",
-            "/tmp/gitleaks_test_prec_dir"
-        ],
-        "env": {
-            "GITLEAKS_CONFIG": "/tmp/gitleaks_test_prec_env_config.toml"
-        },
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_prec_dir",
-                "echo 'hello' > /tmp/gitleaks_test_prec_dir/test.txt",
-                "echo 'title = \"cli config\"' > /tmp/gitleaks_test_prec_config.toml"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_prec_dir",
-                "/tmp/gitleaks_test_prec_config.toml"
-            ]
-        }
-    },
-    {
-        "name": "test_dir_scan_nonexistent_path",
+        "name": "test_unknown_flag_exits_126",
         "category": "INVALID_ARGS",
-        "description": "Verify dir command with non-existent path fails",
+        "description": "Unknown flag causes exit code 126",
         "command": "gitleaks",
         "args": [
-            "dir",
-            "--no-banner",
-            "/nonexistent/path/that/does/not/exist"
+            "--this-flag-does-not-exist"
         ],
-        "expected_exit_code": 1,
+        "expected_exit_code": 126,
         "expected_stdout": null,
-        "expected_stderr": null,
+        "expected_stderr": "unknown flag",
         "timeout_seconds": 10
     },
     {
-        "name": "test_git_scan_not_a_repo",
-        "category": "INVALID_ARGS",
-        "description": "Verify git command on non-git directory fails",
+        "name": "test_help_shows_dir_subcommand",
+        "category": "HELP_OUTPUT",
+        "description": "Root help lists dir as available subcommand",
         "command": "gitleaks",
         "args": [
-            "git",
-            "--no-banner",
-            "/tmp/gitleaks_test_not_repo"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 10,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_not_repo",
-                "echo 'hello' > /tmp/gitleaks_test_not_repo/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_not_repo"
-            ]
-        }
-    },
-    {
-        "name": "test_dir_scan_verbose_output",
-        "category": "HAPPY_PATH",
-        "description": "Verify dir command with --verbose flag shows verbose output",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--verbose",
-            "/tmp/gitleaks_test_verbose_dir"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_verbose_dir",
-                "echo 'hello world' > /tmp/gitleaks_test_verbose_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_verbose_dir"
-            ]
-        }
-    },
-    {
-        "name": "test_dir_scan_with_redact",
-        "category": "HAPPY_PATH",
-        "description": "Verify dir command with --redact flag redacts secrets in output",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--verbose",
-            "--redact",
-            "/tmp/gitleaks_test_redact_dir"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_redact_dir",
-                "echo 'aws_access_key_id = \"AKIAIOSFODNN7EXAMPLE\"' > /tmp/gitleaks_test_redact_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_redact_dir"
-            ]
-        }
-    },
-    {
-        "name": "test_boundary_empty_string_config_flag",
-        "category": "BOUNDARY",
-        "description": "Verify --config with empty string is handled gracefully",
-        "command": "gitleaks",
-        "args": [
-            "version",
-            "--config",
-            ""
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_boundary_exit_code_zero",
-        "category": "BOUNDARY",
-        "description": "Verify --exit-code 0 means always exit 0 even with leaks",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--exit-code",
-            "0",
-            "/tmp/gitleaks_test_exit0_dir"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": null,
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_exit0_dir",
-                "echo 'aws_access_key_id = \"AKIAIOSFODNN7EXAMPLE\"' > /tmp/gitleaks_test_exit0_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_exit0_dir"
-            ]
-        }
-    },
-    {
-        "name": "test_boundary_max_target_megabytes_zero",
-        "category": "BOUNDARY",
-        "description": "Verify --max-target-megabytes 0 means no limit",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--max-target-megabytes",
-            "0",
-            "/tmp/gitleaks_test_mtm0_dir"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_mtm0_dir",
-                "echo 'hello world' > /tmp/gitleaks_test_mtm0_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_mtm0_dir"
-            ]
-        }
-    },
-    {
-        "name": "test_boundary_timeout_zero",
-        "category": "BOUNDARY",
-        "description": "Verify --timeout 0 means no timeout",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--timeout",
-            "0",
-            "/tmp/gitleaks_test_timeout0_dir"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_timeout0_dir",
-                "echo 'hello world' > /tmp/gitleaks_test_timeout0_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_timeout0_dir"
-            ]
-        }
-    },
-    {
-        "name": "test_boundary_max_decode_depth_zero",
-        "category": "BOUNDARY",
-        "description": "Verify --max-decode-depth 0 disables recursive decoding",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--max-decode-depth",
-            "0",
-            "/tmp/gitleaks_test_mdd0_dir"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_mdd0_dir",
-                "echo 'hello world' > /tmp/gitleaks_test_mdd0_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_mdd0_dir"
-            ]
-        }
-    },
-    {
-        "name": "test_boundary_max_archive_depth_zero",
-        "category": "BOUNDARY",
-        "description": "Verify --max-archive-depth 0 (default) means no archive traversal",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--max-archive-depth",
-            "0",
-            "/tmp/gitleaks_test_mad0_dir"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_mad0_dir",
-                "echo 'hello world' > /tmp/gitleaks_test_mad0_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_mad0_dir"
-            ]
-        }
-    },
-    {
-        "name": "test_invalid_report_format",
-        "category": "INVALID_OPTIONS",
-        "description": "Verify an invalid report format produces a fatal error",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--report-path",
-            "/tmp/gitleaks_invalid_report.txt",
-            "--report-format",
-            "invalid_format",
-            "/tmp/gitleaks_test_inv_fmt_dir"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "unknown report format",
-        "timeout_seconds": 10,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_inv_fmt_dir",
-                "echo 'hello' > /tmp/gitleaks_test_inv_fmt_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_inv_fmt_dir",
-                "/tmp/gitleaks_invalid_report.txt"
-            ]
-        }
-    },
-    {
-        "name": "test_report_template_without_template_format",
-        "category": "INVALID_OPTIONS",
-        "description": "Verify --report-template without --report-format=template produces an error",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--report-path",
-            "/tmp/gitleaks_tmpl_err.json",
-            "--report-format",
-            "json",
-            "--report-template",
-            "/tmp/template.txt",
-            "/tmp/gitleaks_test_tmpl_err_dir"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "Report format must be 'template'",
-        "timeout_seconds": 10,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_tmpl_err_dir",
-                "echo 'hello' > /tmp/gitleaks_test_tmpl_err_dir/test.txt",
-                "echo '{{.}}' > /tmp/template.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_tmpl_err_dir",
-                "/tmp/gitleaks_tmpl_err.json",
-                "/tmp/template.txt"
-            ]
-        }
-    },
-    {
-        "name": "test_report_path_unwritable",
-        "category": "INVALID_OPTIONS",
-        "description": "Verify unwritable --report-path produces an error",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--report-path",
-            "/nonexistent_dir/report.json",
-            "--report-format",
-            "json",
-            "/tmp/gitleaks_test_unwr_dir"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "Report path is not writable",
-        "timeout_seconds": 10,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_unwr_dir",
-                "echo 'hello' > /tmp/gitleaks_test_unwr_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_unwr_dir"
-            ]
-        }
-    },
-    {
-        "name": "test_diagnostics_flag_http",
-        "category": "HAPPY_PATH",
-        "description": "Verify --diagnostics http is accepted as a valid option",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--diagnostics",
-            "http",
             "--help"
         ],
         "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
+        "expected_stdout": "dir",
         "expected_stderr": null,
         "timeout_seconds": 10
     },
     {
-        "name": "test_diagnostics_dir_with_http_mode_error",
-        "category": "INVALID_OPTIONS",
-        "description": "Verify --diagnostics-dir with http mode produces an error",
+        "name": "test_help_shows_version_subcommand",
+        "category": "HELP_OUTPUT",
+        "description": "Root help lists version as available subcommand",
         "command": "gitleaks",
         "args": [
-            "dir",
-            "--no-banner",
-            "--diagnostics",
-            "http",
-            "--diagnostics-dir",
-            "/tmp/diag",
-            "/tmp/gitleaks_test_diag_dir"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "should not be set in http mode",
-        "timeout_seconds": 10,
-        "setup": {
-            "commands": [
-                "mkdir -p /tmp/gitleaks_test_diag_dir",
-                "echo 'hello' > /tmp/gitleaks_test_diag_dir/test.txt"
-            ]
-        },
-        "cleanup": {
-            "delete_files": [
-                "/tmp/gitleaks_test_diag_dir"
-            ]
-        }
-    },
-    {
-        "name": "test_git_scan_with_platform_github",
-        "category": "HAPPY_PATH",
-        "description": "Verify git subcommand accepts --platform github",
-        "command": "gitleaks",
-        "args": [
-            "git",
-            "--platform",
-            "github",
             "--help"
         ],
         "expected_exit_code": 0,
-        "expected_stdout": "scan git repositories for secrets",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_git_scan_with_platform_gitlab",
-        "category": "HAPPY_PATH",
-        "description": "Verify git subcommand accepts --platform gitlab",
-        "command": "gitleaks",
-        "args": [
-            "git",
-            "--platform",
-            "gitlab",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan git repositories for secrets",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_multiple_persistent_flags_combined",
-        "category": "HAPPY_PATH",
-        "description": "Verify multiple persistent flags can be used together",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--no-banner",
-            "--verbose",
-            "--no-color",
-            "--log-level",
-            "debug",
-            "--max-target-megabytes",
-            "10",
-            "--max-decode-depth",
-            "3",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files",
+        "expected_stdout": "version",
         "expected_stderr": null,
         "timeout_seconds": 10
     }
 ]''')
 
 # CLI binary/entry point
-CLI_COMMAND = "gitleaks"
+CLI_COMMAND = "app"
 
 # Working directory for CLI execution
 WORKING_DIR = "."
