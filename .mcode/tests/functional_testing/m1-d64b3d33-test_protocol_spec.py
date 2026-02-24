@@ -9,7 +9,7 @@ This script supports two modes:
 1. SRC Validation: Tests commands and captures outputs (no expected_stdout/stderr)
 2. DST Contract Validation: Tests commands and validates outputs match expected
 
-Generated at: 2026-02-24T01:32:16.455107+00:00
+Generated at: 2026-02-24T01:41:48.916628+00:00
 Project: gitleaks-to-python
 Milestone: 1
 """
@@ -34,9 +34,9 @@ import pytest
 # Parse JSON at runtime to handle null -> None, true -> True, false -> False
 TEST_CASES = json.loads(r'''[
     {
-        "name": "test_version_output",
-        "category": "HAPPY_PATH",
-        "description": "Version command displays version string and exits 0",
+        "name": "test_version",
+        "category": "VERSION",
+        "description": "Verify version command displays version",
         "command": "gitleaks",
         "args": [
             "version"
@@ -47,173 +47,295 @@ TEST_CASES = json.loads(r'''[
         "timeout_seconds": 10
     },
     {
-        "name": "test_root_help_output",
+        "name": "test_help",
         "category": "HELP_OUTPUT",
-        "description": "Root --help shows usage information and available commands",
+        "description": "Verify help flag shows usage information",
         "command": "gitleaks",
         "args": [
             "--help"
         ],
         "expected_exit_code": 0,
-        "expected_stdout": "Available Commands",
+        "expected_stdout": "Gitleaks scans code",
         "expected_stderr": null,
         "timeout_seconds": 10
     },
     {
-        "name": "test_dir_help_output",
-        "category": "HELP_OUTPUT",
-        "description": "Dir subcommand --help shows directory scanning usage",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan directories or files for secrets",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_git_help_output",
-        "category": "HELP_OUTPUT",
-        "description": "Git subcommand --help shows git scanning usage",
-        "command": "gitleaks",
-        "args": [
-            "git",
-            "--help"
-        ],
-        "expected_exit_code": 0,
-        "expected_stdout": "scan git repositories for secrets",
-        "expected_stderr": null,
-        "timeout_seconds": 10
-    },
-    {
-        "name": "test_stdin_help_output",
-        "category": "HELP_OUTPUT",
-        "description": "Stdin subcommand --help shows stdin detection usage",
+        "name": "test_stdin_no_secret",
+        "category": "HAPPY_PATH",
+        "description": "Stdin scan with no secrets",
         "command": "gitleaks",
         "args": [
             "stdin",
-            "--help"
+            "--no-banner"
         ],
+        "stdin": "This is just normal text without any secrets",
         "expected_exit_code": 0,
-        "expected_stdout": "detect secrets from stdin",
+        "expected_stdout": "no leaks found",
         "expected_stderr": null,
         "timeout_seconds": 10
     },
     {
-        "name": "test_dir_scan_detects_secrets",
-        "category": "HAPPY_PATH",
-        "description": "Dir scan on directory containing AWS keys detects leaks and exits with code 1",
+        "name": "test_stdin_with_secret",
+        "category": "SECURITY_DETECTION",
+        "description": "Stdin scan detects AWS key",
         "command": "gitleaks",
         "args": [
-            "dir",
-            "testdata/repos/nogit",
+            "stdin",
             "--no-banner"
         ],
+        "stdin": "aws_access_key_id=AKIAIOSFODNN7EXAMPLE",
         "expected_exit_code": 1,
-        "expected_stdout": null,
-        "expected_stderr": "leaks found",
-        "timeout_seconds": 30
+        "expected_stdout": "leaks found",
+        "expected_stderr": null,
+        "timeout_seconds": 10
     },
     {
-        "name": "test_dir_scan_json_report_stdout",
+        "name": "test_dir_with_temp_file_no_secret",
         "category": "HAPPY_PATH",
-        "description": "Dir scan with JSON report output to stdout contains finding fields",
+        "description": "Directory scan with clean file",
         "command": "gitleaks",
         "args": [
             "dir",
-            "testdata/repos/nogit",
-            "--no-banner",
-            "--report-format",
-            "json",
-            "--report-path",
-            "-"
-        ],
-        "expected_exit_code": 1,
-        "expected_stdout": "RuleID",
-        "expected_stderr": "leaks found",
-        "timeout_seconds": 30
-    },
-    {
-        "name": "test_dir_scan_custom_exit_code",
-        "category": "HAPPY_PATH",
-        "description": "Dir scan uses custom exit code when leaks are found",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "testdata/repos/nogit",
-            "--no-banner",
-            "--exit-code",
-            "77"
-        ],
-        "expected_exit_code": 77,
-        "expected_stdout": null,
-        "expected_stderr": "leaks found",
-        "timeout_seconds": 30
-    },
-    {
-        "name": "test_dir_scan_no_leaks_clean_file",
-        "category": "HAPPY_PATH",
-        "description": "Dir scan on a clean file with no secrets exits 0",
-        "command": "gitleaks",
-        "args": [
-            "dir",
-            "/tmp/gitleaks_clean_test.txt",
+            "test_temp_dir",
             "--no-banner"
         ],
         "expected_exit_code": 0,
-        "expected_stdout": null,
-        "expected_stderr": "no leaks found",
-        "timeout_seconds": 30,
+        "expected_stdout": "no leaks found",
+        "expected_stderr": null,
+        "timeout_seconds": 15,
         "setup": {
             "create_file": {
-                "path": "/tmp/gitleaks_clean_test.txt",
-                "content": "hello world\nno secrets here\njust a regular file\n"
+                "path": "test_temp_dir/clean.txt",
+                "content": "This is a clean file with no secrets."
             }
         },
         "cleanup": {
             "delete_files": [
-                "/tmp/gitleaks_clean_test.txt"
+                "test_temp_dir/clean.txt"
+            ],
+            "delete_dirs": [
+                "test_temp_dir"
             ]
         }
     },
     {
-        "name": "test_unknown_flag_exits_126",
-        "category": "INVALID_ARGS",
-        "description": "Unknown flag causes exit code 126",
+        "name": "test_dir_with_secret_file",
+        "category": "SECURITY_DETECTION",
+        "description": "Directory scan detects secret in file",
         "command": "gitleaks",
         "args": [
-            "--this-flag-does-not-exist"
+            "dir",
+            "test_temp_dir",
+            "--no-banner"
         ],
-        "expected_exit_code": 126,
-        "expected_stdout": null,
-        "expected_stderr": "unknown flag",
-        "timeout_seconds": 10
+        "expected_exit_code": 1,
+        "expected_stdout": "leaks found",
+        "expected_stderr": null,
+        "timeout_seconds": 15,
+        "setup": {
+            "create_file": {
+                "path": "test_temp_dir/secret.txt",
+                "content": "github_token=ghp_1234567890abcdefghijklmnopqrstuv"
+            }
+        },
+        "cleanup": {
+            "delete_files": [
+                "test_temp_dir/secret.txt"
+            ],
+            "delete_dirs": [
+                "test_temp_dir"
+            ]
+        }
     },
     {
-        "name": "test_help_shows_dir_subcommand",
-        "category": "HELP_OUTPUT",
-        "description": "Root help lists dir as available subcommand",
+        "name": "test_custom_exit_code",
+        "category": "CONFIGURATION",
+        "description": "Custom exit code when leaks found",
         "command": "gitleaks",
         "args": [
-            "--help"
+            "stdin",
+            "--exit-code",
+            "42",
+            "--no-banner"
         ],
-        "expected_exit_code": 0,
-        "expected_stdout": "dir",
+        "stdin": "api_key=sk-1234567890abcdefghijklmnop",
+        "expected_exit_code": 42,
+        "expected_stdout": "leaks found",
         "expected_stderr": null,
         "timeout_seconds": 10
     },
     {
-        "name": "test_help_shows_version_subcommand",
-        "category": "HELP_OUTPUT",
-        "description": "Root help lists version as available subcommand",
+        "name": "test_json_output_format",
+        "category": "OUTPUT_FORMAT",
+        "description": "JSON report format output",
         "command": "gitleaks",
         "args": [
-            "--help"
+            "stdin",
+            "--report-format",
+            "json",
+            "--report-path",
+            "-",
+            "--no-banner"
         ],
+        "stdin": "No secrets here",
         "expected_exit_code": 0,
-        "expected_stdout": "version",
+        "expected_stdout": "[]",
+        "expected_stderr": null,
+        "timeout_seconds": 10
+    },
+    {
+        "name": "test_verbose_output",
+        "category": "CONFIGURATION",
+        "description": "Verbose output mode",
+        "command": "gitleaks",
+        "args": [
+            "stdin",
+            "--verbose",
+            "--no-banner"
+        ],
+        "stdin": "Just testing verbose mode",
+        "expected_exit_code": 0,
+        "expected_stdout": "no leaks found",
+        "expected_stderr": null,
+        "timeout_seconds": 10
+    },
+    {
+        "name": "test_log_level_debug",
+        "category": "CONFIGURATION",
+        "description": "Debug log level",
+        "command": "gitleaks",
+        "args": [
+            "stdin",
+            "--log-level",
+            "debug",
+            "--no-banner"
+        ],
+        "stdin": "Testing log levels",
+        "expected_exit_code": 0,
+        "expected_stdout": "no leaks found",
+        "expected_stderr": null,
+        "timeout_seconds": 10
+    },
+    {
+        "name": "test_invalid_command",
+        "category": "INVALID_ARGS",
+        "description": "Invalid command should fail",
+        "command": "gitleaks",
+        "args": [
+            "invalidcommand"
+        ],
+        "expected_exit_code": 1,
+        "expected_stderr": "unknown command",
+        "timeout_seconds": 10
+    },
+    {
+        "name": "test_dir_missing_target",
+        "category": "INVALID_ARGS",
+        "description": "Directory command without target fails",
+        "command": "gitleaks",
+        "args": [
+            "dir"
+        ],
+        "expected_exit_code": 1,
+        "expected_stderr": "requires at least 1 arg",
+        "timeout_seconds": 10
+    },
+    {
+        "name": "test_nonexistent_directory",
+        "category": "ERROR_HANDLING",
+        "description": "Scan nonexistent directory",
+        "command": "gitleaks",
+        "args": [
+            "dir",
+            "/nonexistent/path/to/nowhere",
+            "--no-banner"
+        ],
+        "expected_exit_code": 1,
+        "expected_stderr": "",
+        "timeout_seconds": 10
+    },
+    {
+        "name": "test_redact_secrets",
+        "category": "CONFIGURATION",
+        "description": "Test secret redaction in output",
+        "command": "gitleaks",
+        "args": [
+            "stdin",
+            "--verbose",
+            "--redact",
+            "50",
+            "--no-banner"
+        ],
+        "stdin": "password=supersecretpassword123",
+        "expected_exit_code": 1,
+        "expected_stdout": "leaks found",
+        "expected_stderr": null,
+        "timeout_seconds": 10
+    },
+    {
+        "name": "test_config_with_env_var",
+        "category": "CONFIGURATION",
+        "description": "Config via environment variable",
+        "command": "gitleaks",
+        "args": [
+            "stdin",
+            "--no-banner"
+        ],
+        "stdin": "test content",
+        "env": {
+            "GITLEAKS_CONFIG": "nonexistent.toml"
+        },
+        "expected_exit_code": 1,
+        "expected_stderr": "",
+        "timeout_seconds": 10
+    },
+    {
+        "name": "test_multiple_secrets_detection",
+        "category": "SECURITY_DETECTION",
+        "description": "Detect multiple types of secrets",
+        "command": "gitleaks",
+        "args": [
+            "stdin",
+            "--no-banner"
+        ],
+        "stdin": "aws_key=AKIAIOSFODNN7EXAMPLE\ngithub_token=ghp_1234567890abcdefghijklmnopqrstuv\napi_key=sk-1234567890abcdefghijklmnop",
+        "expected_exit_code": 1,
+        "expected_stdout": "leaks found",
+        "expected_stderr": null,
+        "timeout_seconds": 10
+    },
+    {
+        "name": "test_csv_output_format",
+        "category": "OUTPUT_FORMAT",
+        "description": "CSV report format output",
+        "command": "gitleaks",
+        "args": [
+            "stdin",
+            "--report-format",
+            "csv",
+            "--report-path",
+            "-",
+            "--no-banner"
+        ],
+        "stdin": "No secrets in this text",
+        "expected_exit_code": 0,
+        "expected_stdout": "",
+        "expected_stderr": null,
+        "timeout_seconds": 10
+    },
+    {
+        "name": "test_deprecated_detect_command",
+        "category": "DEPRECATED",
+        "description": "Deprecated detect command still works",
+        "command": "gitleaks",
+        "args": [
+            "detect",
+            "--pipe",
+            "--no-banner"
+        ],
+        "stdin": "Testing deprecated command",
+        "expected_exit_code": 0,
+        "expected_stdout": "no leaks found",
         "expected_stderr": null,
         "timeout_seconds": 10
     }
